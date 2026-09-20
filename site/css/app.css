@@ -177,3 +177,6 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 /* static-site additions */
 .vsm-busy { position: fixed; inset: 0; background: rgba(15,30,53,.45); z-index: 2000; display: flex; align-items: center; justify-content: center; }
 .vsm-w-7 { width: 7em; }
+
+/* stat cards in a row share the tallest height, so a wrapped label never misaligns the row */
+.row > [class*="col-"] > .kc-stat-card { height: 100%; }
