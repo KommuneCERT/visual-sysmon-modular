@@ -1,0 +1,27 @@
+{% set sev_class = {'error': 'kc-callout--danger', 'warning': 'kc-callout--warning', 'performance': 'kc-callout--warning', 'recommendation': '', 'info': ''} %}
+{% set sev_label = {'error': 'Fejl', 'warning': 'Advarsel', 'performance': 'Performance', 'recommendation': 'Anbefaling', 'info': 'Info'} %}
+<div class="vsm-findings">
+  {% if summary %}
+  <div class="d-flex gap-2 flex-wrap mb-2">
+    <span class="kc-severity kc-severity-high">{{ summary.error }} fejl</span>
+    <span class="kc-severity kc-severity-medium">{{ summary.warning }} advarsler</span>
+    <span class="kc-severity kc-severity-low">{{ summary.performance }} performance</span>
+    <span class="kc-severity kc-severity-info">{{ summary.recommendation }} anbefalinger</span>
+    {% if exit_code is defined %}<span class="kc-tag">exit {{ exit_code }}</span>{% endif %}
+  </div>
+  {% endif %}
+  {% if not findings %}
+  <div class="kc-callout kc-callout--success"><span class="kc-callout-icon">✓</span><div><p class="kc-callout-body mb-0">Ingen fund – XML'en er gyldig.</p></div></div>
+  {% endif %}
+  {% for f in findings %}
+  <div class="kc-callout {{ sev_class[f.severity] }} {% if compact %}kc-callout--compact{% endif %}">
+    <span class="kc-callout-icon">{% if f.severity == 'error' %}✖{% elif f.severity == 'warning' %}⚠{% elif f.severity == 'performance' %}⏱{% else %}💡{% endif %}</span>
+    <div class="min-w-0">
+      <div class="kc-callout-title"><code>{{ f.code }}</code> {{ f.message }}{% if f.count > 1 %} <span class="kc-tag">×{{ f.count }}</span>{% endif %}
+        {% if f.location %}<span class="text-muted small">· {{ f.location }}</span>{% endif %}
+        {% if f.section and f.section != 'merged' %}<span class="text-muted small">· {{ f.section }}</span>{% endif %}</div>
+      {% if f.details %}<div class="kc-callout-body vsm-detail">{% for d in f.details %}{{ d }}{% if not loop.last %} {% endif %}{% endfor %}</div>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>

@@ -1,0 +1,71 @@
+/* Visual Sysmon Modular – projekt-specifikke tilpasninger.
+   Indlæses EFTER kommunecert-theme.css og bruger kun dets tokens. */
+
+[x-cloak] { display: none !important; }
+
+body { min-height: 100vh; display: flex; flex-direction: column; }
+
+.kc-navbar { position: sticky; top: 0; z-index: 1030; }
+.kc-navbar .kc-logo { display: flex; align-items: center; gap: var(--kc-space-3); }
+.vsm-profile-btn { border-color: rgba(255,255,255,.3); font-size: 13px; }
+
+.vsm-shell {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: var(--kc-space-5);
+  max-width: var(--kc-content-max);
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--kc-space-5) var(--kc-space-6);
+  flex: 1;
+}
+.vsm-sidebar { border-radius: var(--kc-radius-lg); align-self: start; position: sticky; top: 72px; max-height: calc(100vh - 90px); overflow: auto; }
+.vsm-sidebar-head { display: flex; justify-content: space-between; align-items: center; padding: var(--kc-space-3) var(--kc-space-4); border-bottom: 1px solid var(--kc-gray-200); }
+.vsm-catlist .list-group-item { font-size: 13px; padding: 8px var(--kc-space-4); border-color: var(--kc-gray-100); }
+.vsm-catlist .list-group-item.active { background: var(--kc-blue); border-color: var(--kc-blue); }
+.vsm-evid { font-family: var(--kc-font-mono); font-size: 10px; font-weight: 700; color: var(--kc-cyan); min-width: 2.8em; }
+.vsm-catlist .active .vsm-evid { color: #fff; }
+.vsm-badge-none { background: var(--kc-gray-200); color: var(--kc-gray-600); }
+.vsm-badge-some { background: var(--kc-amber); color: #fff; }
+.vsm-badge-all { background: var(--kc-green); color: #fff; }
+.vsm-catlist .active .badge { background: rgba(255,255,255,.25); color: #fff; }
+
+.vsm-main { min-width: 0; }
+.vsm-footer { padding: var(--kc-space-4) var(--kc-space-6); text-align: center; }
+
+/* module cards */
+.vsm-cards { display: flex; flex-direction: column; gap: var(--kc-space-3); }
+.vsm-card { transition: opacity .15s; }
+.vsm-card-off { opacity: .55; background: var(--kc-gray-100); }
+.vsm-card-off:hover { opacity: .85; }
+.vsm-card-title { font-weight: 600; color: var(--kc-navy); }
+.vsm-filename { font-size: 11px; color: var(--kc-gray-400); }
+.vsm-switch { width: 2.6em; height: 1.4em; cursor: pointer; }
+.vsm-switch:checked { background-color: var(--kc-green); border-color: var(--kc-green); }
+.vsm-filter { max-width: 720px; }
+
+/* editor */
+.vsm-group { overflow: hidden; }
+.vsm-group-head { background: var(--kc-navy); color: #fff; padding: var(--kc-space-3) var(--kc-space-4); }
+.vsm-event { padding: var(--kc-space-4); border-top: 1px solid var(--kc-gray-200); }
+.vsm-rule { border: 1px solid var(--kc-gray-200); border-left: 4px solid var(--kc-blue); border-radius: 0 var(--kc-radius-md) var(--kc-radius-md) 0; padding: var(--kc-space-3); margin-bottom: var(--kc-space-3); background: #fff; }
+.vsm-rule--bare { border-left-color: var(--kc-gray-400); background: var(--kc-gray-100); }
+.vsm-cond { display: grid; grid-template-columns: 170px 150px minmax(0,1fr) 180px auto; gap: var(--kc-space-2); margin-bottom: var(--kc-space-2); }
+
+/* code / xml */
+.vsm-xml { font-family: var(--kc-font-mono); font-size: 12px; line-height: 1.5; tab-size: 2; }
+.vsm-pre { white-space: pre-wrap; word-break: break-word; max-height: 60vh; overflow: auto; }
+.vsm-detail { white-space: pre-wrap; font-family: var(--kc-font-mono); font-size: 11px; }
+.vsm-wrap { white-space: pre-wrap; word-break: break-word; }
+.vsm-scroll { max-height: 60vh; overflow: auto; }
+.kc-callout--compact { padding: 8px 12px; margin-bottom: 6px; }
+.kc-callout--compact .kc-callout-title { font-size: 13px; }
+.vsm-overlay-list { font-size: 12px; }
+.vsm-flash { animation: vsm-fade 6s forwards; }
+@keyframes vsm-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; height: 0; margin: 0; padding: 0; overflow: hidden; } }
+
+@media (max-width: 992px) {
+  .vsm-shell { grid-template-columns: 1fr; padding: var(--kc-space-4); }
+  .vsm-sidebar { position: static; max-height: none; }
+  .vsm-cond { grid-template-columns: 1fr 1fr; }
+}

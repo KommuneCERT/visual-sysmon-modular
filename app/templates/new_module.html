@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block content %}
+<span class="kc-section-tag">{{ category.label }}</span>
+<h1 class="kc-section-title">Nyt modul</h1>
+<div class="kc-surface p-4 rounded-3" style="max-width: 640px">
+  <form method="post" class="row g-3">
+    <div class="col-12"><label class="form-label">Navn (bliver til filnavn)</label><input class="form-control" name="name" placeholder="fx Vores EDR-ekskluderinger" required>
+      <div class="form-text">Gemmes som <code>{{ category.dirname }}/include_&lt;navn&gt;.xml</code> i overlay – upstream røres ikke.</div></div>
+    <div class="col-md-6"><label class="form-label">Type</label>
+      <select class="form-select" name="kind"><option value="include">include – log når regel matcher</option><option value="exclude">exclude – undertryk når regel matcher</option></select></div>
+    <div class="col-md-6"><label class="form-label">Event-type</label>
+      <select class="form-select" name="event_type">{% for et in event_types %}<option value="{{ et }}" {% if et == default_event %}selected{% endif %}>{{ et }} ({{ schema.events[et].event_id if schema else '' }})</option>{% endfor %}</select></div>
+    <div class="col-12 d-flex gap-2"><button class="btn btn-primary">Opret og rediger</button><a class="btn btn-outline-secondary" href="/p/{{ profile.slug }}/c/{{ category.dirname }}">Annullér</a></div>
+  </form>
+</div>
+{% endblock %}

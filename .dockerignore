@@ -1,0 +1,5 @@
+data/
+.git/
+vendor/sysmon-modular/.git/
+**/__pycache__/
+.pytest_cache/

@@ -1,0 +1,1070 @@
+/*
+ * KommuneCERT Bootstrap 5 design system
+ * Bootstrap bruges som fundament; dette stylesheet definerer tokens,
+ * komponenter og layoutmønstre til KommuneCERTs kunderettede materiale.
+ *
+ * Brug:
+ *   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3/dist/css/bootstrap.min.css">
+ *   <link rel="stylesheet" href="kommunecert-theme.css">
+ */
+
+/* ════════════════════════════════════════════════
+   1. DESIGN TOKENS
+   ════════════════════════════════════════════════ */
+:root {
+  /* Primærfarver */
+  --kc-navy:        #0f1e35;
+  --kc-navy-2:      #162844;
+  --kc-blue:        #1a5fa8;
+  --kc-blue-2:      #2375c8;
+  --kc-cyan:        #0a9dd9;
+  --kc-teal:        #0d8a8a;
+
+  /* Accentfarver */
+  --kc-amber:       #e8a020;
+  --kc-red:         #d63031;
+  --kc-green:       #00a86b;
+
+  /* Neutrale */
+  --kc-gray-100:    #f0f4f8;
+  --kc-gray-200:    #d8e2ed;
+  --kc-gray-400:    #7a90a8;
+  --kc-gray-600:    #3d5368;
+  --kc-white:       #ffffff;
+
+  /* Bootstrap-override tokens */
+  --bs-primary:          var(--kc-blue);
+  --bs-primary-rgb:      26, 95, 168;
+  --bs-secondary:        var(--kc-navy);
+  --bs-secondary-rgb:    15, 30, 53;
+  --bs-success:          var(--kc-green);
+  --bs-danger:           var(--kc-red);
+  --bs-warning:          var(--kc-amber);
+  --bs-info:             var(--kc-cyan);
+  --bs-body-font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
+  --bs-body-color:       var(--kc-gray-600);
+  --bs-body-bg:          var(--kc-gray-100);
+  --bs-border-radius:    6px;
+  --bs-border-color:     var(--kc-gray-200);
+
+  /* Typografi */
+  --kc-font-body:    'Source Sans 3', 'Segoe UI', sans-serif;
+  --kc-font-display: 'Source Serif 4', Georgia, serif;
+  --kc-font-mono:    'IBM Plex Mono', 'Courier New', monospace;
+
+  /* Layout og spacing */
+  --kc-space-1:      4px;
+  --kc-space-2:      8px;
+  --kc-space-3:      12px;
+  --kc-space-4:      16px;
+  --kc-space-5:      24px;
+  --kc-space-6:      32px;
+  --kc-space-7:      44px;
+  --kc-space-8:      52px;
+  --kc-space-9:      60px;
+  --kc-radius-sm:    3px;
+  --kc-radius-md:    6px;
+  --kc-radius-lg:    8px;
+  --kc-radius-xl:    10px;
+  --kc-shadow-sm:    0 2px 8px rgba(0, 0, 0, .05);
+  --kc-shadow-md:    0 2px 12px rgba(0, 0, 0, .06);
+  --kc-shadow-lg:    0 8px 48px rgba(0, 0, 0, .35);
+  --kc-border-subtle: 1px solid rgba(255,255,255,.08);
+  --kc-content-max:  1600px;
+  --kc-chart-height: 200px;
+
+  /* Status- og tonefarver */
+  --kc-tone-info-bg:     #dbeeff;
+  --kc-tone-warning-bg:  #fff3d4;
+  --kc-tone-danger-bg:   #fde8e6;
+  --kc-tone-success-bg:  #d8f0e4;
+  --kc-tone-info-text:   var(--kc-blue);
+  --kc-tone-warning-text:#9a6010;
+  --kc-tone-danger-text: var(--kc-red);
+  --kc-tone-success-text:var(--kc-green);
+
+  /* Bootstrap-temaoverrides */
+  --bs-link-color:            var(--kc-blue);
+  --bs-link-hover-color:      var(--kc-blue-2);
+  --bs-heading-color:         var(--kc-navy);
+  --bs-border-radius-sm:      var(--kc-radius-sm);
+  --bs-border-radius:         var(--kc-radius-md);
+  --bs-border-radius-lg:      var(--kc-radius-lg);
+  --bs-box-shadow-sm:         var(--kc-shadow-sm);
+  --bs-box-shadow:            var(--kc-shadow-md);
+}
+
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&family=Source+Serif+4:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+body {
+  font-family: var(--kc-font-body);
+  color: var(--bs-body-color);
+  background: var(--bs-body-bg);
+}
+
+html {
+  color-scheme: light;
+}
+
+.kc-demo-body {
+  background: var(--kc-gray-100);
+}
+
+.kc-page-shell {
+  max-width: var(--kc-content-max);
+  margin: 0 auto;
+  padding-inline: var(--kc-space-8);
+}
+
+.kc-surface,
+.kc-surface-dark {
+  border-radius: var(--kc-radius-lg);
+  padding: var(--kc-space-5);
+}
+
+.kc-surface {
+  background: var(--kc-white);
+  box-shadow: var(--kc-shadow-sm);
+}
+
+.kc-surface-dark {
+  background: var(--kc-navy);
+  color: rgba(255,255,255,.88);
+}
+
+.kc-note {
+  font-size: 11px;
+  color: var(--kc-gray-400);
+  margin-top: var(--kc-space-3);
+}
+
+.kc-accent-text {
+  color: var(--kc-blue);
+}
+
+.kc-chart-card {
+  background: var(--kc-white);
+  border-radius: var(--kc-radius-lg);
+  padding: 20px;
+  box-shadow: var(--kc-shadow-sm);
+}
+
+.kc-chart-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--kc-navy);
+  margin-bottom: var(--kc-space-3);
+}
+
+.kc-chart-canvas {
+  position: relative;
+  height: var(--kc-chart-height);
+}
+
+.kc-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kc-space-4);
+  margin-top: var(--kc-space-3);
+  font-size: 11px;
+  color: var(--kc-gray-400);
+}
+
+.kc-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kc-chart-legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.kc-chart-legend-swatch.line {
+  width: 12px;
+  height: 2px;
+  border-radius: 999px;
+}
+
+.kc-chart-legend-item.info    { color: var(--kc-blue); }
+.kc-chart-legend-item.accent  { color: var(--kc-teal); }
+.kc-chart-legend-item.warning { color: var(--kc-amber); }
+.kc-chart-legend-item.muted   { color: var(--kc-gray-400); }
+.kc-chart-legend-item.danger  { color: var(--kc-red); }
+
+.kc-slide-title {
+  font-size: 28px;
+}
+
+.kc-slide-kpi .kc-stat-num {
+  font-size: 32px;
+}
+
+.kc-finding-card--compact h4 {
+  font-size: 12px;
+}
+
+.kc-finding-card--compact p,
+.kc-mono--compact {
+  font-size: 11px;
+}
+
+.kc-mono--compact {
+  padding-inline: 4px;
+}
+
+.kc-tlp-static {
+  position: static;
+}
+
+
+/* ════════════════════════════════════════════════
+   2. TOPNAVIGATION
+   .kc-navbar
+   ════════════════════════════════════════════════ */
+.kc-navbar {
+  background: var(--kc-navy);
+  border-bottom: 3px solid var(--kc-cyan);
+  padding: var(--kc-space-3) var(--kc-space-6);
+}
+
+.kc-navbar .kc-logo-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .3px;
+}
+
+.kc-navbar .kc-logo-sub {
+  font-size: 9px;
+  color: rgba(255,255,255,.4);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.kc-navbar .kc-nav-link {
+  color: rgba(255,255,255,.6);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+}
+
+.kc-navbar .kc-nav-link:hover,
+.kc-navbar .kc-nav-link.active {
+  color: #fff;
+  background: rgba(255,255,255,.08);
+}
+
+
+/* ════════════════════════════════════════════════
+   3. SLIDE-LAYOUT (16:9 præsentation)
+   .kc-slide-page
+   ════════════════════════════════════════════════ */
+.kc-slide-page {
+  width: 1280px;
+  height: 720px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--kc-gray-100);
+  box-shadow: var(--kc-shadow-lg);
+}
+
+/* Slideshow-wrapper — centrerer slides på mørk baggrund */
+.kc-slideshow {
+  background: #111827;
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+/* Slide-header strip (lys slide) */
+.kc-slide-header {
+  background: var(--kc-navy);
+  padding: 0 52px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 5;
+}
+
+/* Slide-body (under header) */
+.kc-slide-body {
+  position: absolute;
+  top: 64px; left: 0; right: 0; bottom: 0;
+  padding: 36px 52px;
+}
+
+/* Slide-body (mørk) */
+.kc-slide-body-dark {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  padding: 48px 60px;
+  background: var(--kc-navy);
+}
+
+/* Accent-streg øverst (lys slide) */
+.kc-slide-page .kc-accent-strip {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, var(--kc-cyan), var(--kc-blue), transparent);
+  z-index: 10;
+}
+
+/* Slide-tæller */
+.kc-slide-num {
+  position: absolute;
+  bottom: 18px; right: 28px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,.25);
+  z-index: 10;
+  letter-spacing: .5px;
+}
+.kc-slide-num.dark { color: var(--kc-gray-400); }
+
+/* Cover-slide (mørk forside) */
+.kc-slide-cover {
+  background: var(--kc-navy);
+}
+.kc-slide-cover .kc-cover-bg-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.kc-slide-cover .kc-cover-glow {
+  position: absolute; right: -160px; top: -160px;
+  width: 680px; height: 680px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(26,95,168,.3), transparent 65%);
+  pointer-events: none;
+}
+.kc-slide-cover .kc-cover-glow-2 {
+  position: absolute; left: -100px; bottom: -100px;
+  width: 440px; height: 440px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(10,157,217,.15), transparent 65%);
+  pointer-events: none;
+}
+.kc-slide-cover .kc-cover-left-bar {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+  background: linear-gradient(180deg, var(--kc-cyan), var(--kc-blue), transparent);
+}
+.kc-slide-cover .kc-cover-body {
+  position: absolute; inset: 0;
+  padding: 44px 80px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Mørkt indholdsslide (.kc-slide-dark) — samme header-struktur som lys slide,
+   men mørk baggrund og alle komponenter tilpasset.
+   Brug: <div class="kc-slide-page kc-slide-dark"> */
+.kc-slide-dark {
+  background: #0d1b2e; /* en tak dybere end --kc-navy for kontrast mod header */
+}
+
+/* Svag separator — adskiller header fra mørkt body */
+.kc-slide-dark .kc-slide-header {
+  background: rgba(255,255,255,.05);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+/* Overskrift og accent */
+.kc-slide-dark .kc-slide-title   { color: #fff; }
+.kc-slide-dark .kc-accent-text   { color: var(--kc-cyan); }
+
+/* Brødtekst */
+.kc-slide-dark .kc-slide-body p  { color: rgba(255,255,255,.55); }
+
+/* Stat-kort: standard-varianten er navy — usynlig på mørk baggrund.
+   Frosted-override giver kontrast; farvede varianter (--primary osv.) forbliver uændret. */
+.kc-slide-dark .kc-stat-card {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+/* Fund-kort: hvid baggrund → gennemsigtig mørk flade */
+.kc-slide-dark .kc-finding-card {
+  background: rgba(255,255,255,.05);
+  box-shadow: none;
+}
+.kc-slide-dark .kc-finding-card h4 { color: rgba(255,255,255,.92); }
+.kc-slide-dark .kc-finding-card p  { color: rgba(255,255,255,.5); }
+
+/* Inline kode på mørkt baggrund */
+.kc-slide-dark .kc-mono {
+  background: rgba(255,255,255,.08);
+  color: rgba(168,216,240,.9);
+}
+
+
+/* ════════════════════════════════════════════════
+   4. RAPPORT-LAYOUT (A4 dokument)
+   .kc-report-page
+   ════════════════════════════════════════════════ */
+.kc-report-page {
+  width: 210mm;
+  min-height: 297mm;
+  background: var(--kc-white);
+  box-shadow: 0 4px 24px rgba(0,0,0,.12);
+  margin: 0 auto 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.kc-report-page .kc-page-header {
+  background: var(--kc-navy);
+  padding: 16px 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.kc-report-page .kc-page-content {
+  padding: 36px 44px;
+  flex: 1;
+}
+
+.kc-report-page .kc-page-footer {
+  padding: 12px 44px;
+  border-top: 1px solid var(--kc-gray-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: var(--kc-gray-400);
+  flex-shrink: 0;
+}
+
+
+/* ════════════════════════════════════════════════
+   5. LOGO-KOMPONENT
+   .kc-logo
+   ════════════════════════════════════════════════ */
+.kc-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kc-logo-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .3px;
+  line-height: 1.1;
+}
+.kc-logo-sub {
+  font-size: 9px;
+  color: rgba(255,255,255,.38);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+
+/* ════════════════════════════════════════════════
+   6. BADGES OG LABELS
+   ════════════════════════════════════════════════ */
+
+/* TLP-badge */
+/* Fælles baseline — sikrer horisontal alignment når badges blandes */
+.kc-tlp,
+.kc-tlp-dark,
+.kc-tag,
+.kc-cover-tag,
+.kc-severity {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* TLP-badge (outline — til mørk baggrund) */
+.kc-tlp {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--kc-radius-sm);
+  border: 1px solid currentColor;
+  color: rgba(255,255,255,.45);
+}
+
+/* TLP-badge (fyldt — til lys baggrund) */
+.kc-tlp-dark {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: var(--kc-radius-sm);
+  background: var(--kc-navy);
+  color: #fff;
+}
+
+/* ── TLP farvemodifikatorer (officielle TLP-farver) ──────────────
+   Brug: <span class="kc-tlp kc-tlp-green">TLP:GREEN</span>
+         <span class="kc-tlp-dark kc-tlp-green">TLP:GREEN</span>
+   ──────────────────────────────────────────────────────────────── */
+
+/* CLEAR — hvid/grå, ingen farve */
+.kc-tlp-clear                    { color: rgba(255,255,255,.6); }
+.kc-tlp-dark.kc-tlp-clear        { background: #e8eaed; color: var(--kc-gray-600); }
+
+/* GREEN — #33ff00 (officiel TLP-grøn), mørkere baggrund for læsbarhed */
+.kc-tlp-green                    { color: #5ae600; }
+.kc-tlp-dark.kc-tlp-green        { background: #1a5c00; color: #a8ff70; }
+
+/* AMBER — #ffc000 */
+.kc-tlp-amber                    { color: #ffc000; }
+.kc-tlp-dark.kc-tlp-amber        { background: #6b4200; color: #ffd966; }
+
+/* AMBER+STRICT — samme farve som AMBER, STRICT ændrer ikke farven */
+.kc-tlp-amber-strict             { color: #ffc000; }
+.kc-tlp-dark.kc-tlp-amber-strict { background: #6b4200; color: #ffd966; }
+
+/* RED — #ff2b2b */
+.kc-tlp-red                      { color: #ff4d4d; }
+.kc-tlp-dark.kc-tlp-red          { background: #6b0000; color: #ff9999; }
+
+/* RED+STRICT — samme farve som RED */
+.kc-tlp-red-strict               { color: #ff4d4d; }
+.kc-tlp-dark.kc-tlp-red-strict   { background: #6b0000; color: #ff9999; }
+
+/* Sektion-tag */
+.kc-section-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--kc-cyan);
+  margin-bottom: 8px;
+  display: block; /* block når den bruges alene over en overskrift */
+}
+/* Brug .inline når kc-section-tag indgår i en flex-row med andre badges */
+.kc-section-tag.inline {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  line-height: 1;
+  margin-bottom: 0;
+}
+.kc-section-tag.dark { color: var(--kc-blue-2); }
+
+/* Emne-tag (lille inline) */
+.kc-tag {
+  padding: 4px 9px;
+  border-radius: var(--kc-radius-sm);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  background: var(--kc-gray-200);
+  color: var(--kc-gray-600);
+}
+.kc-tag-blue   { background: #dbeeff; color: var(--kc-blue); }
+.kc-tag-red    { background: #fde8e6; color: var(--kc-red); }
+.kc-tag-green  { background: #d8f0e4; color: var(--kc-green); }
+.kc-tag-amber  { background: #fef3d8; color: #9a6010; }
+.kc-tag-navy   { background: var(--kc-navy); color: #fff; }
+
+/* Cover-tag (stor, fyldt) */
+.kc-cover-tag {
+  background: var(--kc-cyan);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 2px;
+  margin-bottom: 20px;
+}
+
+/* Severity-badge */
+.kc-severity {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 2px;
+  color: #fff;
+}
+.kc-severity-high   { background: var(--kc-red); }
+.kc-severity-medium { background: var(--kc-amber); }
+.kc-severity-low    { background: var(--kc-teal); }
+.kc-severity-info   { background: var(--kc-blue); }
+
+
+/* ════════════════════════════════════════════════
+   7. STATISTIK-KORT
+   .kc-stat-card
+   ════════════════════════════════════════════════ */
+.kc-stat-card {
+  background: var(--kc-navy);
+  border-radius: var(--kc-radius-xl);
+  padding: 24px 20px;
+  text-align: center;
+  color: #fff;
+}
+.kc-stat-card.kc-stat-card--primary,
+.kc-stat-card.blue {
+  background: var(--kc-blue);
+}
+
+.kc-stat-card.kc-stat-card--accent,
+.kc-stat-card.teal {
+  background: var(--kc-teal);
+}
+
+.kc-stat-card.kc-stat-card--warning,
+.kc-stat-card.amber {
+  background: var(--kc-amber);
+}
+
+.kc-stat-card.kc-stat-card--danger,
+.kc-stat-card.red {
+  background: var(--kc-red);
+}
+
+.kc-stat-num {
+  font-size: 40px;
+  font-weight: 800;
+  color: inherit;
+  line-height: 1;
+  margin-bottom: 6px;
+  display: block;
+}
+.kc-stat-label {
+  font-size: 11px;
+  color: rgba(255,255,255,.6);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+}
+
+
+/* ════════════════════════════════════════════════
+   8. FUND-KORT
+   .kc-finding-card
+   ════════════════════════════════════════════════ */
+.kc-finding-card {
+  background: var(--kc-white);
+  border-left: 4px solid var(--kc-blue);
+  border-radius: 0 var(--kc-radius-lg) var(--kc-radius-lg) 0;
+  padding: 14px 18px;
+  box-shadow: var(--kc-shadow-md);
+}
+.kc-finding-card.kc-finding-card--danger,
+.kc-finding-card.red {
+  border-color: var(--kc-red);
+}
+
+.kc-finding-card.kc-finding-card--warning,
+.kc-finding-card.amber {
+  border-color: var(--kc-amber);
+}
+
+.kc-finding-card.kc-finding-card--accent,
+.kc-finding-card.teal {
+  border-color: var(--kc-teal);
+}
+
+.kc-finding-card.kc-finding-card--success,
+.kc-finding-card.green {
+  border-color: var(--kc-green);
+}
+
+.kc-finding-card h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--kc-navy);
+  margin-bottom: 5px;
+}
+.kc-finding-card p {
+  font-size: 12px;
+  color: var(--kc-gray-600);
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+
+/* ════════════════════════════════════════════════
+   9. ANBEFALING-KORT
+   .kc-rec-card
+   ════════════════════════════════════════════════ */
+.kc-rec-card {
+  background: var(--kc-white);
+  border-left: 4px solid var(--kc-blue);
+  border-radius: 0 var(--kc-radius-lg) var(--kc-radius-lg) 0;
+  padding: 12px 14px;
+  box-shadow: var(--kc-shadow-sm);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.kc-rec-card.kc-rec-card--priority-1,
+.kc-rec-card.p1 {
+  border-color: var(--kc-red);
+}
+
+.kc-rec-card.kc-rec-card--priority-2,
+.kc-rec-card.p2 {
+  border-color: var(--kc-amber);
+}
+
+.kc-rec-card.kc-rec-card--priority-3,
+.kc-rec-card.p3 {
+  border-color: var(--kc-blue);
+}
+
+.kc-rec-card.kc-rec-card--priority-4,
+.kc-rec-card.p4 {
+  border-color: var(--kc-teal);
+}
+
+.kc-rec-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--kc-navy);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.kc-rec-card.kc-rec-card--priority-1 .kc-rec-num,
+.kc-rec-card.p1 .kc-rec-num {
+  background: var(--kc-red);
+}
+
+.kc-rec-card.kc-rec-card--priority-2 .kc-rec-num,
+.kc-rec-card.p2 .kc-rec-num {
+  background: var(--kc-amber);
+}
+
+.kc-rec-card.kc-rec-card--priority-3 .kc-rec-num,
+.kc-rec-card.p3 .kc-rec-num {
+  background: var(--kc-blue);
+}
+
+.kc-rec-card.kc-rec-card--priority-4 .kc-rec-num,
+.kc-rec-card.p4 .kc-rec-num {
+  background: var(--kc-teal);
+}
+
+.kc-rec-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--kc-navy);
+  margin-bottom: 3px;
+}
+.kc-rec-body {
+  font-size: 11px;
+  color: var(--kc-gray-600);
+  line-height: 1.55;
+  margin-bottom: 0;
+}
+
+
+/* ════════════════════════════════════════════════
+   10. IOC-BLOK
+   .kc-ioc
+   ════════════════════════════════════════════════ */
+.kc-ioc {
+  background: var(--kc-navy);
+  border-radius: var(--kc-radius-lg);
+  padding: 14px 18px;
+}
+.kc-ioc-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--kc-cyan);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
+  display: block;
+}
+.kc-ioc-val {
+  font-family: var(--kc-font-mono);
+  font-size: 11px;
+  color: rgba(168,216,240,.85);
+  word-break: break-all;
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+.kc-ioc-val .kc-hl { color: #ffd580; }
+.kc-ioc-note {
+  font-size: 10px;
+  color: rgba(255,255,255,.3);
+  margin-top: 5px;
+  margin-bottom: 0;
+}
+
+
+/* ════════════════════════════════════════════════
+   11. KODE-BLOK (kommandoer)
+   .kc-code
+   ════════════════════════════════════════════════ */
+.kc-code {
+  background: var(--kc-navy);
+  border-radius: var(--kc-radius-lg);
+  padding: 14px 18px;
+  font-family: var(--kc-font-mono);
+  font-size: 11px;
+  line-height: 1.8;
+  color: rgba(168,216,240,.85);
+}
+.kc-code .kc-c-blue { color: #7ec8e3; }
+.kc-code .kc-c-gold { color: #ffd580; }
+.kc-code .kc-c-gray { color: rgba(255,255,255,.3); }
+.kc-code .kc-c-red  { color: #ff8080; }
+
+
+/* ════════════════════════════════════════════════
+   12. CALLOUT / ADVARSEL
+   .kc-callout
+   ════════════════════════════════════════════════ */
+.kc-callout {
+  background: var(--kc-tone-info-bg);
+  border-left: 4px solid var(--kc-blue);
+  border-radius: 0 var(--kc-radius-lg) var(--kc-radius-lg) 0;
+  padding: 14px 18px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.kc-callout.kc-callout--warning,
+.kc-callout.warning {
+  background: var(--kc-tone-warning-bg);
+  border-color: var(--kc-amber);
+}
+
+.kc-callout.kc-callout--danger,
+.kc-callout.danger {
+  background: var(--kc-tone-danger-bg);
+  border-color: var(--kc-red);
+}
+
+.kc-callout.kc-callout--success,
+.kc-callout.success {
+  background: var(--kc-tone-success-bg);
+  border-color: var(--kc-green);
+}
+
+.kc-callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.kc-callout-title { font-size: 13px; font-weight: 700; color: var(--kc-navy); margin-bottom: 3px; }
+.kc-callout-body  { font-size: 12px; color: var(--kc-gray-600); line-height: 1.6; margin-bottom: 0; }
+
+
+/* ════════════════════════════════════════════════
+   13. TIMELINE
+   .kc-timeline
+   ════════════════════════════════════════════════ */
+.kc-timeline { position: relative; padding-left: 28px; }
+
+.kc-timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px; top: 8px; bottom: 0;
+  width: 2px;
+  background: rgba(255,255,255,.1);
+}
+
+/* Lys variant */
+.kc-timeline.light::before { background: var(--kc-gray-200); }
+
+.kc-tl-item { position: relative; margin-bottom: 20px; }
+.kc-tl-item:last-child { margin-bottom: 0; }
+
+.kc-tl-dot {
+  position: absolute;
+  left: -24px; top: 4px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--kc-blue);
+  border: 2px solid rgba(255,255,255,.15);
+}
+.kc-tl-dot.kc-tl-dot--danger,
+.kc-tl-dot.red {
+  background: var(--kc-red);
+}
+
+.kc-tl-dot.kc-tl-dot--warning,
+.kc-tl-dot.amber {
+  background: var(--kc-amber);
+}
+
+.kc-tl-dot.kc-tl-dot--accent,
+.kc-tl-dot.teal {
+  background: var(--kc-teal);
+}
+
+.kc-tl-dot.kc-tl-dot--success,
+.kc-tl-dot.green {
+  background: var(--kc-green);
+}
+
+/* Lys variant — dot-border */
+.kc-timeline.light .kc-tl-dot { border-color: var(--kc-white); box-shadow: 0 0 0 2px var(--kc-blue); }
+
+.kc-tl-label { font-size: 9px; font-weight: 700; color: var(--kc-cyan); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+.kc-tl-label.dark { color: var(--kc-blue); }
+.kc-tl-title { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+.kc-tl-title.dark { color: var(--kc-navy); }
+.kc-tl-body  { font-size: 11px; color: rgba(255,255,255,.5); line-height: 1.55; margin-bottom: 0; }
+.kc-tl-body.dark  { color: var(--kc-gray-600); }
+
+
+/* ════════════════════════════════════════════════
+   14. TABEL
+   .kc-table
+   ════════════════════════════════════════════════ */
+.kc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.kc-table thead tr {
+  background: var(--kc-navy);
+}
+.kc-table thead th {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+}
+.kc-table tbody tr:nth-child(even) {
+  background: var(--kc-gray-100);
+}
+.kc-table tbody td {
+  padding: 8px 12px;
+  color: var(--kc-gray-600);
+  border-bottom: 1px solid var(--kc-gray-200);
+  vertical-align: top;
+}
+.kc-table tbody td:first-child {
+  font-weight: 600;
+  color: var(--kc-navy);
+}
+
+
+/* ════════════════════════════════════════════════
+   15. COVER META-STRIP
+   .kc-cover-meta
+   ════════════════════════════════════════════════ */
+.kc-cover-meta {
+  display: flex;
+  gap: 0;
+  margin-top: 36px;
+}
+.kc-cover-meta-item {
+  padding: 14px 24px;
+  background: rgba(255,255,255,.04);
+  border: var(--kc-border-subtle);
+  border-right: none;
+}
+.kc-cover-meta-item:first-child { border-radius: var(--kc-radius-md) 0 0 var(--kc-radius-md); }
+.kc-cover-meta-item:last-child  { border-right: var(--kc-border-subtle); border-radius: 0 var(--kc-radius-md) var(--kc-radius-md) 0; }
+.kc-cover-meta-label { font-size: 9px; color: rgba(255,255,255,.35); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 3px; }
+.kc-cover-meta-val   { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.88); }
+
+
+/* ════════════════════════════════════════════════
+   16. TYPOGRAFI (overrides)
+   ════════════════════════════════════════════════ */
+.kc-display {
+  font-family: var(--kc-font-body);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -.5px;
+  color: var(--kc-navy);
+}
+.kc-display.light { color: #fff; }
+
+.kc-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--kc-navy);
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--kc-blue);
+  display: inline-block;
+  margin-bottom: 14px;
+  margin-top: 24px;
+}
+.kc-section-title:first-child { margin-top: 0; }
+
+.kc-mono {
+  font-family: var(--kc-font-mono);
+  font-size: .9em;
+  background: var(--kc-gray-100);
+  padding: 1px 5px;
+  border-radius: var(--kc-radius-sm);
+  color: var(--kc-navy);
+}
+
+
+/* ════════════════════════════════════════════════
+   17. RESPONSIVE HJÆLPERE
+   ════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+  .kc-page-shell {
+    padding-inline: var(--kc-space-4);
+  }
+
+  .kc-navbar {
+    padding-inline: var(--kc-space-4);
+  }
+
+  .kc-surface,
+  .kc-surface-dark,
+  .kc-chart-card {
+    padding: var(--kc-space-4);
+  }
+}
+
+
+/* ════════════════════════════════════════════════
+   18. PRINT
+   ════════════════════════════════════════════════ */
+@media print {
+  body { background: white !important; }
+  .kc-report-page {
+    margin: 0;
+    box-shadow: none;
+    page-break-after: always;
+  }
+  .kc-report-page:last-child { page-break-after: avoid; }
+  .kc-slideshow { background: white !important; padding: 0 !important; gap: 0 !important; }
+  .kc-slide-page { box-shadow: none; page-break-after: always; }
+}
