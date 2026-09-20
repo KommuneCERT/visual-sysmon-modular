@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+{% from "_macros.html" import help %}
 {% block title %}{{ m.filename }} · raw XML{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
@@ -19,7 +20,7 @@
     <button class="btn btn-primary">Save</button>
     <button class="btn btn-outline-secondary" type="button"
             hx-post="/p/{{ profile.slug }}/m/{{ m.rel }}/validate" hx-include="#rawform" hx-target="#findings" hx-swap="innerHTML">Validate</button>
-    <label class="form-check ms-2"><input class="form-check-input" type="checkbox" name="force" value="true"> <span class="form-check-label">Save anyway (ignore errors)</span></label>
+    <label class="form-check ms-2"><input class="form-check-input" type="checkbox" name="force" value="true"> <span class="form-check-label">Save anyway (ignore errors)</span> {{ help("Writes the file even if validation reports errors. The build will still validate it, so use this only for work in progress. Malformed XML that cannot be parsed at all is never merged.") }}</label>
     <span class="text-muted small ms-auto">Validation uses <code>sysmon-modular validate --sysmon-version {{ profile.sysmon_version }}</code></span>
   </div>
 </form>

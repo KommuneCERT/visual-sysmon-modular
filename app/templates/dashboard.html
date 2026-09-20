@@ -1,14 +1,23 @@
 {% extends "layout.html" %}
+{% from "_macros.html" import help %}
 {% block title %}{{ profile.name }} · {{ app_title }}{% endblock %}
 {% block content %}
+<div class="kc-callout vsm-intro mb-4" x-data="{ open: true }" x-init="try { open = !localStorage.getItem('vsm-intro-dismissed') } catch (e) {}" x-show="open" x-cloak>
+  <span class="kc-callout-icon">💡</span>
+  <div>
+    <div class="kc-callout-title">Pick modules → edit rules → Build → download sysmonconfig.xml</div>
+    <p class="kc-callout-body mb-0">Each category in the sidebar is a Sysmon event ID with upstream's include (detection) and exclude (noise) modules. Switch them on or off for this profile, tune a rule where needed, then press <strong>Build</strong>. Upstream files are never modified – your changes live in an overlay. The <a href="/p/{{ profile.slug }}/help">Help</a> page explains the tool and how Sysmon's include/exclude filtering works.</p>
+  </div>
+  <button type="button" class="btn-close" aria-label="Dismiss" @click="open = false; try { localStorage.setItem('vsm-intro-dismissed', '1') } catch (e) {}"></button>
+</div>
 <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
   <div>
-    <span class="kc-section-tag">Profile</span>
+    <span class="kc-section-tag">Profile {{ help("A profile is one selection of modules plus its build settings. Use one per fleet, e.g. <code>servers</code> and <code>workstations</code>. Profiles are independent, but edited/custom modules (the overlay) are shared by all of them.") }}</span>
     <h1 class="kc-section-title mb-0">{{ profile.name }}</h1>
     {% if profile.description %}<p class="text-muted mb-0">{{ profile.description }}</p>{% endif %}
   </div>
   <div class="d-flex gap-2">
-    <a class="btn btn-sm btn-outline-secondary" href="/p/{{ profile.slug }}/include_rules.txt">⬇ include_rules.txt</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/p/{{ profile.slug }}/include_rules.txt" title="Export this profile as an upstream-style include list">⬇ include_rules.txt</a>
     <form method="post" action="/p/{{ profile.slug }}/build" class="m-0"><button class="btn btn-sm btn-primary">▶ Build now</button></form>
   </div>
 </div>
@@ -16,32 +25,32 @@
 <section class="row g-3 mb-4">
   <div class="col-sm-6 col-xl-3"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num">{{ selected_total }}</span><span class="kc-stat-label">Selected modules of {{ module_total }}</span></div></div>
   <div class="col-sm-6 col-xl-3"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num">{{ sidebar|length }}</span><span class="kc-stat-label">Categories</span></div></div>
-  <div class="col-sm-6 col-xl-3"><div class="kc-stat-card kc-stat-card--warning"><span class="kc-stat-num">{{ overlay_files|length }}</span><span class="kc-stat-label">Custom / edited modules</span></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="kc-stat-card kc-stat-card--warning"><span class="kc-stat-num">{{ overlay_files|length }}</span><span class="kc-stat-label">Custom / edited modules {{ help("Modules in the overlay: upstream modules you have changed plus modules you created. They shadow upstream in every profile's build.") }}</span></div></div>
   <div class="col-sm-6 col-xl-3"><div class="kc-stat-card {% if builds and builds[0].ok %}kc-stat-card--primary{% elif builds %}kc-stat-card--danger{% endif %}"><span class="kc-stat-num">{{ builds|length }}</span><span class="kc-stat-label">Builds{% if builds %} · latest {{ 'OK' if builds[0].ok else 'FAILED' }}{% endif %}</span></div></div>
 </section>
 
 <div class="row g-4">
   <div class="col-lg-7">
     <div class="kc-surface p-4 rounded-3 mb-4">
-      <h2 class="kc-section-title">Build settings</h2>
+      <h2 class="kc-section-title">Build settings {{ help("Passed to <code>sysmon-modular merge</code> when you press Build. Saved per profile.") }}</h2>
       <form method="post" action="/p/{{ profile.slug }}/settings" class="row g-3">
         <div class="col-md-6"><label class="form-label">Name</label><input class="form-control" name="name" value="{{ profile.name }}" required></div>
-        <div class="col-md-6"><label class="form-label">Target Sysmon version</label>
+        <div class="col-md-6"><label class="form-label">Target Sysmon version {{ help("The Sysmon binary the output will be loaded on. Sets <code>schemaversion</code> and decides which events and fields are allowed – newer ones are flagged (SYS204/SYS205) or removed, depending on the setting below.") }}</label>
           <select class="form-select" name="sysmon_version">{% for v in sysmon_versions %}<option value="{{ v }}" {% if v == profile.sysmon_version %}selected{% endif %}>Sysmon {{ v }} → schema {{ schema_for_version[v] }}</option>{% endfor %}</select></div>
         <div class="col-12"><label class="form-label">Description</label><input class="form-control" name="description" value="{{ profile.description }}"></div>
-        <div class="col-md-6"><label class="form-label">Events/fields unsupported by the target version</label>
+        <div class="col-md-6"><label class="form-label">Events/fields unsupported by the target version {{ help("<strong>warn</strong>: keep them in the output and report a warning – the file may fail to load on the older binary. <strong>exclude</strong>: strip them so the file loads cleanly; an event filter that becomes empty is removed entirely.") }}</label>
           <select class="form-select" name="unsupported"><option value="warn" {% if profile.unsupported == 'warn' %}selected{% endif %}>Keep and warn (warn)</option><option value="exclude" {% if profile.unsupported == 'exclude' %}selected{% endif %}>Remove from output (exclude)</option></select></div>
         <div class="col-md-6 d-flex flex-column justify-content-end gap-1">
-          <div class="form-check"><input class="form-check-input" type="checkbox" name="analyze" value="true" id="analyze" {% if profile.analyze %}checked{% endif %}><label class="form-check-label" for="analyze">Run analyzer (conflicts, performance)</label></div>
-          <div class="form-check"><input class="form-check-input" type="checkbox" name="preserve_comments" value="true" id="pc" {% if profile.preserve_comments %}checked{% endif %}><label class="form-check-label" for="pc">Preserve XML comments</label></div>
-          <div class="form-check"><input class="form-check-input" type="checkbox" name="force_grouprelation_or" value="true" id="fo" {% if profile.force_grouprelation_or %}checked{% endif %}><label class="form-check-label" for="fo">Force groupRelation="or" on all RuleGroups</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="analyze" value="true" id="analyze" {% if profile.analyze %}checked{% endif %}><label class="form-check-label" for="analyze">Run analyzer (conflicts, performance) {{ help("Adds <code>--analyze</code>: reports include/exclude rules that cancel each other, patterns that are expensive to evaluate, and recommendations such as exclusions by bare image name. Never fails the build.") }}</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="preserve_comments" value="true" id="pc" {% if profile.preserve_comments %}checked{% endif %}><label class="form-check-label" for="pc">Preserve XML comments {{ help("Keep the comments from the template and modules in the merged file. Off by default – the output is smaller and easier to diff.") }}</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="force_grouprelation_or" value="true" id="fo" {% if profile.force_grouprelation_or %}checked{% endif %}><label class="form-check-label" for="fo">Force groupRelation="or" on all RuleGroups {{ help("Rewrites every RuleGroup to <code>groupRelation=&quot;or&quot;</code>. Only for legacy compatibility – it changes how conditions combine in groups that were written as <code>and</code>. Leave off unless you know you need it.") }}</label></div>
         </div>
         <div class="col-12 d-flex gap-2"><button class="btn btn-primary">Save settings</button></div>
       </form>
     </div>
 
     <div class="kc-surface p-4 rounded-3 mb-4">
-      <h2 class="kc-section-title">Bulk selection</h2>
+      <h2 class="kc-section-title">Bulk selection {{ help("Selecting everything matches upstream's published <code>sysmonconfig.xml</code>. <em>Include modules only</em> keeps all detections but drops the noise exclusions; <em>exclude modules only</em> is useful as a base for a very verbose research profile.") }}</h2>
       <form method="post" action="/p/{{ profile.slug }}/select-all" class="d-flex flex-wrap gap-2">
         <button class="btn btn-outline-primary btn-sm" name="mode" value="all">Select all modules</button>
         <button class="btn btn-outline-primary btn-sm" name="mode" value="include">Include modules only</button>
@@ -49,7 +58,7 @@
         <button class="btn btn-outline-danger btn-sm" name="mode" value="none" onclick="return confirm('Deselect every module in this profile?')">Deselect all</button>
       </form>
       <hr>
-      <h3 class="h6">Import an include/exclude list (upstream text format)</h3>
+      <h3 class="h6">Import an include/exclude list (upstream text format) {{ help("Plain text, one entry per line: a module path (<code>1_process_creation/include_foo.xml</code>) or a directory (selects every module in it). Lines starting with <code>#</code> are ignored. Same format as <code>0_custom_configuration/example_include_rules.txt</code> upstream.") }}</h3>
       <form method="post" action="/p/{{ profile.slug }}/import" enctype="multipart/form-data" class="row g-2 align-items-end">
         <div class="col-md-6"><input class="form-control form-control-sm" type="file" name="file" accept=".txt" required></div>
         <div class="col-md-4"><select class="form-select form-select-sm" name="mode"><option value="replace">Replace selection (include list)</option><option value="add">Add to selection</option><option value="exclude">Remove from selection (exclude list)</option></select></div>
@@ -74,7 +83,7 @@
     </div>
 
     <div class="kc-surface p-4 rounded-3 mb-4" id="new-profile">
-      <h2 class="kc-section-title">New profile</h2>
+      <h2 class="kc-section-title">New profile {{ help("Copying from a profile duplicates its module selection and settings. Start empty when you want to build a minimal, allow-listed configuration from scratch.") }}</h2>
       <form method="post" action="/profiles" class="row g-2">
         <div class="col-12"><input class="form-control" name="name" placeholder="e.g. workstations-prod" required></div>
         <div class="col-12"><select class="form-select" name="mode"><option value="all">Start with all modules selected</option><option value="none">Start empty</option></select></div>

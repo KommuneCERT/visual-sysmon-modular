@@ -38,6 +38,12 @@ def index() -> RedirectResponse:
     return RedirectResponse(f"/p/{prof.slug}/", status_code=303)
 
 
+@app.get("/help", include_in_schema=False)
+def help_redirect() -> RedirectResponse:
+    prof = profiles.ensure_default()
+    return RedirectResponse(f"/p/{prof.slug}/help", status_code=303)
+
+
 @app.get("/healthz", include_in_schema=False)
 def healthz() -> dict:
     return {"ok": True, "cli": app.state.cli_version, "categories": len(catalog.category_dirs())}

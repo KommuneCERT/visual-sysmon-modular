@@ -21,6 +21,12 @@ def dashboard(request: Request, slug: str):
     )
 
 
+@router.get("/p/{slug}/help")
+def help_page(request: Request, slug: str):
+    prof = get_profile(slug)
+    return render(request, "help.html", **sidebar_ctx(prof))
+
+
 @router.post("/profiles")
 def create_profile(name: str = Form(...), mode: str = Form("all"), copy_from: str = Form("")):
     try:

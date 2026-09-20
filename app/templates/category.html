@@ -1,9 +1,10 @@
 {% extends "layout.html" %}
+{% from "_macros.html" import help %}
 {% block title %}{{ category.label }} · {{ profile.name }}{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
   <div>
-    <span class="kc-section-tag">Event ID {{ category.event_ids|join(' / ') }}</span>
+    <span class="kc-section-tag">Event ID {{ category.event_ids|join(' / ') }} {{ help("Every module here filters Sysmon event " ~ category.event_ids|join('/') ~ ". <span class='kc-severity kc-severity-info'>include</span> modules are detections – only matching events are logged. <span class='kc-severity kc-severity-medium'>exclude</span> modules suppress known noise. <strong>Exclude always wins</strong> when both match, so keep exclusions narrow.") }}</span>
     <h1 class="kc-section-title mb-0">{{ category.label }}</h1>
     <div class="text-muted small"><code>{{ category.dirname }}/</code> · {{ category.include_count }} include · {{ category.exclude_count }} exclude</div>
   </div>
@@ -14,7 +15,7 @@
       <button class="btn btn-outline-primary" name="mode" value="exclude">+ excludes</button>
       <button class="btn btn-outline-danger" name="mode" value="none">Deselect all</button>
     </form>
-    <a class="btn btn-sm btn-primary" href="/p/{{ profile.slug }}/c/{{ category.dirname }}/new">+ New module</a>
+    <a class="btn btn-sm btn-primary" href="/p/{{ profile.slug }}/c/{{ category.dirname }}/new" title="Create a custom module in this category (stored in the overlay, not upstream)">+ New module</a>
   </div>
 </div>
 

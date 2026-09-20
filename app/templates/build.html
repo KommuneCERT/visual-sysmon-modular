@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+{% from "_macros.html" import help %}
 {% block title %}Build {{ build.id }} · {{ profile.name }}{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
@@ -24,6 +25,7 @@
 
 <ul class="nav nav-tabs mb-3" role="tablist">
   <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-findings">Findings ({{ build.findings|length }})</button></li>
+  <li class="nav-item align-self-center">{{ help("<strong>Errors</strong> fail the build (invalid XML, unknown fields, bad ATT&amp;CK metadata). <strong>Warnings</strong> mean the file works but something is off – typically events/fields the target Sysmon version does not support. <strong>Performance</strong> and <strong>recommendations</strong> come from the analyzer and are advisory. <strong>Coverage</strong> counts conditions and ATT&amp;CK techniques per event; <strong>Diff</strong> compares rule meaning with an earlier build, ignoring formatting.", "Build result") }}</li>
   {% if coverage %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-coverage">Coverage</button></li>{% endif %}
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-diff">Diff</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-log">Log</button></li>

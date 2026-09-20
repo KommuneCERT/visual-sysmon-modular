@@ -39,6 +39,7 @@
     </div>
     <a href="/p/{{ profile.slug }}/" class="kc-nav-link {% if request.url.path == '/p/' ~ profile.slug ~ '/' %}active{% endif %}">Overview</a>
     <a href="/p/{{ profile.slug }}/builds" class="kc-nav-link {% if '/builds' in request.url.path %}active{% endif %}">Builds</a>
+    <a href="/p/{{ profile.slug }}/help" class="kc-nav-link {% if request.url.path.endswith('/help') %}active{% endif %}" title="How the tool and Sysmon filtering work">Help</a>
     <span class="kc-tag kc-tag-blue">Sysmon {{ profile.sysmon_version }} · schema {{ schema_for_version[profile.sysmon_version] }}</span>
     <form method="post" action="/p/{{ profile.slug }}/build" class="m-0">
       <button class="btn btn-sm btn-info fw-bold text-white px-3" type="submit" title="Merge the selected modules into sysmonconfig.xml">▶ Build</button>
@@ -66,6 +67,16 @@
 <footer class="vsm-footer text-muted small">
   {{ app_title }} · {{ cli_version }} · upstream: <a href="https://github.com/olafhartong/sysmon-modular" target="_blank" rel="noopener">olafhartong/sysmon-modular</a>
 </footer>
+<script>
+  // Popovers for the small "?" help buttons; re-run after HTMX swaps in new markup.
+  function vsmInitHelp(root) {
+    root.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => { if (!bootstrap.Popover.getInstance(el)) new bootstrap.Popover(el); });
+  }
+  window.addEventListener('DOMContentLoaded', () => {
+    vsmInitHelp(document);
+    document.body.addEventListener('htmx:afterSwap', e => vsmInitHelp(e.target.parentElement || document));
+  });
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
