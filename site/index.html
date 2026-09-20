@@ -579,7 +579,9 @@
 
     <!-- ═══════════ HELP ═══════════ -->
     <template x-if="$store.app.route.page === 'help'">
-      <div id="help-root" x-init="fetch('help.html').then(r => r.text()).then(h => { $el.innerHTML = h; window.vsmXml.init($el) })"></div>
+      <div id="help-root" x-data="{ loaded: false }"
+           x-init="fetch('help.html').then(r => r.text()).then(h => { $el.innerHTML = h; window.vsmXml.init($el); loaded = true; $nextTick(() => $store.app.scrollToSection()) })"
+           x-effect="$store.app.route.id; loaded && $nextTick(() => $store.app.scrollToSection())"></div>
     </template>
   </main>
 </div>

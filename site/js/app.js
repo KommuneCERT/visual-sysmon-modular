@@ -140,6 +140,13 @@ document.addEventListener("alpine:init", () => {
     persist() { if (this.profile) this.profile.updated = new Date().toISOString().slice(0, 19) + "Z"; S.saveState(A.raw(this.state)); },
     notify(msg) { this.flash = msg; clearTimeout(this._flashT); this._flashT = setTimeout(() => { this.flash = ""; }, 5000); },
     go(hash) { location.hash = hash; },
+    // #/help/<section> – scroll the section into view (TOC links can't use plain #id with hash routing)
+    scrollToSection() {
+      const id = this.route.id;
+      const el = id ? document.getElementById(id) : null;
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      else if (!id) window.scrollTo(0, 0);
+    },
 
     // ── profiles ──
     switchProfile(slug) { if (this.state.profiles[slug]) { this.state.current = slug; this.persist(); this.go("#/"); } },
@@ -274,7 +281,11 @@ document.addEventListener("alpine:init", () => {
   });
 
   onEngineStatus(s => { const st = A.store("app"); st.engine.state = s.state; st.engine.error = s.error; });
-  window.addEventListener("hashchange", () => { A.store("app").route = parseRoute(); window.scrollTo(0, 0); });
+  window.addEventListener("hashchange", () => {
+    const route = parseRoute();
+    A.store("app").route = route;
+    if (!(route.page === "help" && route.id)) window.scrollTo(0, 0);   // help sections scroll themselves
+  });
 
   // ── page components ──
   A.data("pageSearch", () => ({
@@ -434,7 +445,7 @@ export function parseRoute(hash = location.hash) {
     case "profile": r.page = "profile"; break;
     case "builds": r.page = "builds"; break;
     case "coverage": r.page = "coverage"; break;
-    case "help": r.page = "help"; break;
+    case "help": r.page = "help"; r.id = seg[1] || ""; break;
     case "c": r.page = "category"; r.cat = seg[1] || ""; break;
     case "new": r.page = "newModule"; r.cat = seg[1] || ""; break;
     case "build": r.page = "build"; r.id = seg[1] || ""; break;
