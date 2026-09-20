@@ -22,6 +22,15 @@ def test_catalog_structure(tmp_path):
     assert all("<Sysmon" in m["xml"] for m in cat["modules"])
     assert "<HashAlgorithms>" in cat["template"]
     assert "example_include_rules.txt" in cat["examples"]
+    presets = {p["id"]: p for p in cat["presets"]}
+    n_all = len(rels)
+    n_fd = sum(1 for r in rels if r.startswith("23_file_delete/"))
+    assert n_fd > 0
+    assert len(presets["balanced"]["modules"]) == n_all - n_fd
+    assert len(presets["balanced-filedelete"]["modules"]) == n_all
+    assert len(presets["mde-augment"]["modules"]) == n_all - len(cat["mde_covered"]) and len(cat["mde_covered"]) > 100
+    assert all(r.split("/")[1].startswith("exclude_") and not r.startswith("23_") for r in presets["excludes-only"]["modules"])
+    assert presets["balanced"]["options"] == {"unsupported": "exclude", "preserve_comments": True}
 
 
 def test_fields_and_upstream():

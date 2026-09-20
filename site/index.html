@@ -66,7 +66,7 @@
     <div class="list-group list-group-flush vsm-catlist">
       <template x-for="row in $store.app.sidebar" :key="row.cat.dirname">
         <a :href="'#/c/' + row.cat.dirname" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" :class="{ active: row.cat.dirname === $store.app.route.cat }">
-          <span class="d-flex align-items-center gap-2 text-truncate"><span class="vsm-evid" x-text="row.cat.event_ids.join('/')"></span><span class="text-truncate" x-text="row.cat.label"></span></span>
+          <span class="d-flex align-items-center gap-2 text-truncate"><span class="vsm-evid" x-text="row.cat.event_ids.join('/')"></span><span class="text-truncate" x-text="row.cat.label"></span><span class="vsm-vol-dot" x-show="$store.app.volumeOf(row.cat.dirname).level === 'high'" :title="'High volume: ' + $store.app.volumeOf(row.cat.dirname).why"></span></span>
           <span class="badge rounded-pill" :class="row.selected === 0 ? 'vsm-badge-none' : row.selected === row.total ? 'vsm-badge-all' : 'vsm-badge-some'" x-text="row.selected + '/' + row.total"></span>
         </a>
       </template>
@@ -98,7 +98,7 @@
         <template x-if="result === null">
           <div class="text-muted small px-1">Type to search <span x-text="$store.app.selected.size"></span> selected modules – or pick a filter to browse.
             <span class="ms-2">Try: <a href="#" @click.prevent="q='lsass'">lsass</a> · <a href="#" @click.prevent="q='T1059'">T1059</a> · <a href="#" @click.prevent="q='onmatch=exclude'">exclude</a> · <a href="#" @click.prevent="q='DestinationPort'">DestinationPort</a></span>
-            <div class="kc-callout mt-4"><span class="kc-callout-icon">💡</span><div><div class="kc-callout-title">Pick modules → edit rules → Build → download sysmonconfig.xml</div><p class="kc-callout-body mb-0">Each category in the sidebar is a Sysmon event ID with upstream's include (detection) and exclude (noise) modules. Switch them on or off for this profile, tune a rule where needed, then press <strong>Build</strong> – the merge runs in your browser. Nothing leaves your machine; your profiles and edited modules are stored in this browser only, so use <strong>Save / Load</strong> to keep them. The <a href="#/help">Help</a> page explains the tool and how Sysmon's include/exclude filtering works.</p></div></div>
+            <div class="kc-callout mt-4"><span class="kc-callout-icon">💡</span><div><div class="kc-callout-title">Pick modules → edit rules → Build → download sysmonconfig.xml <button class="btn btn-sm btn-primary ms-2" @click="$dispatch('open-wizard')">Start here – guided setup</button></div><p class="kc-callout-body mb-0">Each category in the sidebar is a Sysmon event ID with upstream's include (detection) and exclude (noise) modules. Switch them on or off for this profile, tune a rule where needed, then press <strong>Build</strong> – the merge runs in your browser. Nothing leaves your machine; your profiles and edited modules are stored in this browser only, so use <strong>Save / Load</strong> to keep them. The <a href="#/help">Help</a> page explains the tool and how Sysmon's include/exclude filtering works.</p></div></div>
           </div>
         </template>
         <template x-if="result !== null">
@@ -126,6 +126,7 @@
                     <span class="vsm-hit-sep">›</span>
                     <span class="x-t" x-text="'<' + hit.event_type"></span> <span class="x-a">onmatch</span>=<span class="x-s" x-text="'&quot;' + hit.onmatch + '&quot;'"></span><span class="x-t">&gt;</span>
                   </div>
+                  <div class="vsm-sentence" x-show="hit.block !== 'module'" x-text="sentence(hit)"></div>
                   <div class="vsm-hit-tech" x-show="hit.block !== 'module' && hit.techniques.length"><template x-for="t in hit.techniques" :key="t[0]"><span><a class="kc-tag kc-tag-blue" :href="'https://attack.mitre.org/techniques/' + t[0].replace('.', '/') + '/'" target="_blank" rel="noopener" x-text="t[0]"></a> <span class="text-muted small" x-text="t[1]"></span></span></template></div>
                   <pre class="vsm-xml-view" :class="hit.block === 'module' ? 'vsm-hit-module-xml' : 'vsm-xml-view--auto vsm-hit-xml'" :data-mark="mark" x-xml="hit.xml"></pre>
                 </div>
@@ -150,6 +151,7 @@
             <button class="btn btn-sm btn-primary" @click="$store.app.runBuild()">▶ Build now</button>
           </div>
         </div>
+        <div class="kc-surface p-3 rounded-3 mb-3"><h2 class="kc-section-title">Before you deploy <button x-help="'Plain-language checks on the current selection and the last build: empty or exclude-only selections, high-volume event types without their noise exclusions, target-version pitfalls, analyzer hints and whether the profile changed since the last build.'"></button></h2><div x-include="'tpl-checklist'"></div></div>
         <div class="kc-callout kc-callout--warning mb-3"><span class="kc-callout-icon">💾</span><div><div class="kc-callout-title">Your work lives only in this browser</div><p class="kc-callout-body mb-0">Profiles, edited modules and build history are stored in this browser's local storage – nothing is uploaded. Clearing site data or switching devices loses them. <strong>Export</strong> a JSON file to keep or move your configuration; <strong>import</strong> it here to restore.</p></div></div>
 
         <section class="row g-3 mb-4">
@@ -166,7 +168,7 @@
               <form class="row g-3" @submit.prevent="save()">
                 <div class="col-md-6"><label class="form-label">Name</label><input class="form-control" x-model="form.name" required></div>
                 <div class="col-md-6"><label class="form-label">Target Sysmon version <button x-help="'The Sysmon binary the output will be loaded on. Sets <code>schemaversion</code> and decides which events and fields are allowed – newer ones are flagged (SYS204/SYS205) or removed, depending on the setting below.'"></button></label>
-                  <select class="form-select" x-model="form.sysmon_version"><template x-for="v in $store.app.sysmonVersions" :key="v"><option :value="v" x-text="`Sysmon ${v} → schema ${$store.app.schemaFor[v]}`"></option></template></select></div>
+                  <select class="form-select" x-model="form.sysmon_version"><template x-for="t in $store.app.sysmonTargets" :key="t.v"><option :value="t.v" x-text="`${t.label} → schema ${t.schema}`"></option></template></select></div>
                 <div class="col-12"><label class="form-label">Description</label><input class="form-control" x-model="form.description"></div>
                 <div class="col-md-6"><label class="form-label">Events/fields unsupported by the target version <button x-help="'<strong>warn</strong>: keep them in the output and report a warning – the file may fail to load on the older binary. <strong>exclude</strong>: strip them so the file loads cleanly; an event filter that becomes empty is removed entirely.'"></button></label>
                   <select class="form-select" x-model="form.unsupported"><option value="warn">Keep and warn (warn)</option><option value="exclude">Remove from output (exclude)</option></select></div>
@@ -218,10 +220,11 @@
             </div>
 
             <div class="kc-surface p-4 rounded-3 mb-4" id="new-profile">
-              <h2 class="kc-section-title">New profile <button x-help="'Copying from a profile duplicates its module selection and settings. Start empty when you want to build a minimal, allow-listed configuration from scratch.'"></button></h2>
+              <div class="d-flex justify-content-between align-items-start"><h2 class="kc-section-title">New profile <button x-help="'Presets mirror upstream\'s published configurations. Copying from a profile duplicates its module selection and settings. Start empty when you want to build a minimal, allow-listed configuration from scratch.'"></button></h2><button class="btn btn-sm btn-outline-primary" @click="$dispatch('open-wizard')">Guided start</button></div>
               <form class="row g-2" @submit.prevent="create()">
                 <div class="col-12"><input class="form-control" x-model="newName" placeholder="e.g. workstations-prod" required></div>
-                <div class="col-12"><select class="form-select" x-model="newMode"><option value="all">Start with all modules selected</option><option value="none">Start empty</option></select></div>
+                <div class="col-12"><select class="form-select" x-model="newMode"><template x-for="p in $store.app.presets" :key="p.id"><option :value="'preset:' + p.id" x-text="p.name + ' (' + p.modules.length + ' modules)'"></option></template><option value="all">All modules</option><option value="none">Start empty</option></select>
+                  <div class="form-text" x-text="($store.app.presets.find(p => 'preset:' + p.id === newMode) || {}).description || ''"></div></div>
                 <div class="col-12"><select class="form-select" x-model="copyFrom"><option value="">— or copy from profile —</option><template x-for="p in $store.app.profiles" :key="p.slug"><option :value="p.slug" x-text="p.name"></option></template></select></div>
                 <div class="col-12"><button class="btn btn-primary">Create profile</button></div>
               </form>
@@ -247,7 +250,7 @@
               <div>
                 <span class="kc-section-tag">Event ID <span x-text="cat.event_ids.join(' / ')"></span> <button x-help="'Every module here filters this Sysmon event. <span class=\'kc-severity kc-severity-info\'>include</span> modules are detections – only matching events are logged. <span class=\'kc-severity kc-severity-medium\'>exclude</span> modules suppress known noise. <strong>Exclude always wins</strong> when both match, so keep exclusions narrow.'"></button></span>
                 <h1 class="kc-section-title mb-0" x-text="cat.label"></h1>
-                <div class="text-muted small"><code x-text="cat.dirname + '/'"></code> · <span x-text="cat.modules.filter(m => m.kind === 'include').length"></span> include · <span x-text="cat.modules.filter(m => m.kind === 'exclude').length"></span> exclude</div>
+                <div class="text-muted small"><code x-text="cat.dirname + '/'"></code> · <span class="kc-tag" :class="{ 'kc-tag-red': volume(cat.dirname).level === 'high', 'kc-tag-amber': volume(cat.dirname).level === 'medium' }" x-text="volume(cat.dirname).level + ' volume'" :title="volume(cat.dirname).why"></span> · <span x-text="cat.modules.filter(m => m.kind === 'include').length"></span> include · <span x-text="cat.modules.filter(m => m.kind === 'exclude').length"></span> exclude</div>
               </div>
               <div class="d-flex gap-2 flex-wrap">
                 <div class="btn-group btn-group-sm">
@@ -276,6 +279,11 @@
                         <code class="vsm-filename" x-text="m.filename"></code>
                       </div>
                       <div class="vsm-card-title" x-text="m.title"></div>
+                      <div class="vsm-sentence" x-data="{ d: explain(m) }" x-effect="d = explain(m)">
+                        <template x-for="(sen, i) in d.sentences" :key="i"><div x-text="sen"></div></template>
+                        <a href="#" class="small" x-show="d.more" @click.prevent="expanded[m.rel] = true" x-text="'+ ' + d.more + ' more'"></a>
+                        <a href="#" class="small" x-show="!d.more && d.total > 1 && expanded[m.rel]" @click.prevent="expanded[m.rel] = false">show less</a>
+                      </div>
                       <div class="d-flex flex-wrap gap-1 mt-1">
                         <template x-for="et in m.event_types" :key="et"><span class="kc-tag" x-text="et"></span></template>
                         <template x-for="t in m.techniques.slice(0, 6)" :key="t[0]"><span class="kc-tag kc-tag-blue" :title="t[1]" x-text="t[0]"></span></template>
@@ -345,6 +353,7 @@
             <div class="kc-surface p-3 rounded-3 mb-3 d-flex gap-3 align-items-end flex-wrap">
               <div><label class="form-label small mb-0">schemaversion <button x-help="'Configuration schema of this module file. The merged output uses the profile\'s target version instead, so this rarely needs changing.'"></button></label><input class="form-control form-control-sm vsm-w-7" x-model="model.schemaversion" @input="dirty=true"></div>
               <button class="btn btn-sm btn-outline-primary" @click="addGroup()">+ RuleGroup</button>
+              <label class="form-check form-switch small mb-0 ms-2"><input class="form-check-input" type="checkbox" :checked="explain" @change="toggleExplain()"> <span class="form-check-label">Explain rules in plain words</span></label>
               <span class="text-muted small ms-auto">Hierarchy: RuleGroup → event (include/exclude) → Rule (and/or) → conditions <button x-help="'Each condition is <em>field · operator · value</em>. Fields depend on the event type. Operators: <code>is</code>, <code>contains</code>, <code>begin with</code>, <code>end with</code>, their negations, the multi-value <code>… any/all</code> forms (values separated by <code>;</code>) and <code>image</code>, which matches a process by full path or file name. All matching is case-insensitive. See Help → Condition operators.'"></button></span>
             </div>
             <template x-for="(rg, gi) in model.rulegroups" :key="gi">
@@ -370,6 +379,7 @@
                     </div>
                     <template x-if="ev.conditions.length">
                       <div class="vsm-rule vsm-rule--bare">
+                        <div class="vsm-sentence mb-1" x-show="explain" x-text="explainBare(rg, ev)"></div>
                         <div class="small text-muted mb-1">Bare conditions (directly under the event – each matched on its own) <button x-help="'Conditions without a Rule wrapper. Sysmon combines them with the RuleGroup\'s groupRelation (<code>or</code>: any matches). With no groupRelation, same-field conditions are OR-ed and different fields AND-ed.'"></button></div>
                         <template x-for="(c, ci) in ev.conditions" :key="ci">
                           <div class="vsm-cond">
@@ -401,6 +411,7 @@
                             <button class="btn btn-sm btn-outline-danger" @click="r.conditions.splice(ci, 1); dirty=true">✕</button>
                           </div>
                         </template>
+                        <div class="vsm-sentence" x-show="explain && r.conditions.length" x-text="explainRule(ev, r)"></div>
                         <div class="text-muted small" x-show="!r.conditions.length">No conditions – this rule matches nothing. Add at least one.</div>
                       </div>
                     </template>
@@ -499,7 +510,9 @@
               <div class="col-6 col-xl-3"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num" x-text="b.summary.performance"></span><span class="kc-stat-label">Performance findings</span></div></div>
               <div class="col-6 col-xl-3"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num" x-text="b.summary.recommendation"></span><span class="kc-stat-label">Recommendations</span></div></div>
             </section>
+            <details class="mb-3" :open="$store.app.checklist.some(i => i.level !== 'info')"><summary class="fw-bold">Before you deploy <span class="kc-tag" x-text="$store.app.checklist.length + ' notes'"></span></summary><div class="mt-2" x-include="'tpl-checklist'"></div></details>
             <ul class="nav nav-tabs mb-3">
+              <li class="nav-item" x-show="b.ok"><button class="nav-link" :class="{ active: tab === 'deploy' }" @click="tab = 'deploy'">Deploy</button></li>
               <li class="nav-item"><button class="nav-link" :class="{ active: tab === 'findings' }" @click="tab = 'findings'" x-text="'Findings (' + b.findings.length + ')'"></button></li>
               <li class="nav-item align-self-center"><button x-help="'<strong>Errors</strong> fail the build (invalid XML, unknown fields, bad ATT&amp;CK metadata). <strong>Warnings</strong> mean the file works but something is off – typically events/fields the target Sysmon version does not support. <strong>Performance</strong> and <strong>recommendations</strong> come from the analyzer and are advisory. <strong>Coverage</strong> counts conditions and ATT&amp;CK techniques per event; <strong>Diff</strong> compares rule meaning with an earlier build, ignoring formatting.'"></button></li>
               <li class="nav-item" x-show="matrix"><button class="nav-link" :class="{ active: tab === 'coverage' }" @click="tab = 'coverage'">Coverage</button></li>
@@ -507,6 +520,30 @@
               <li class="nav-item"><button class="nav-link" :class="{ active: tab === 'log' }" @click="tab = 'log'">Log</button></li>
               <li class="nav-item" x-show="b.ok"><button class="nav-link" :class="{ active: tab === 'xml' }" @click="tab = 'xml'; loadXml()">XML</button></li>
             </ul>
+            <div x-show="tab === 'deploy'">
+              <div class="row g-4">
+                <div class="col-lg-7">
+                  <ol class="vsm-deploy">
+                    <li><strong>Download</strong> the file above and save it as <code x-text="fileName()"></code> next to <code>sysmon64.exe</code> on a pilot host. Keep the file – it is what you will roll back to.</li>
+                    <li><strong>Install</strong> (first time on a host):
+                      <div class="vsm-cmd"><code x-text="'sysmon64.exe -accepteula -i ' + fileName()"></code><button class="btn btn-sm btn-outline-secondary" x-copy="'sysmon64.exe -accepteula -i ' + fileName()">Copy</button></div></li>
+                    <li><strong>Update</strong> an existing installation (no reboot, no reinstall):
+                      <div class="vsm-cmd"><code x-text="'sysmon64.exe -c ' + fileName()"></code><button class="btn btn-sm btn-outline-secondary" x-copy="'sysmon64.exe -c ' + fileName()">Copy</button></div></li>
+                    <li><strong>Verify</strong> – dump the active configuration and check the schema version and rule counts:
+                      <div class="vsm-cmd"><code>sysmon64.exe -c</code><button class="btn btn-sm btn-outline-secondary" x-copy="'sysmon64.exe -c'">Copy</button></div>
+                      Events appear in <code>Applications and Services Logs → Microsoft → Windows → Sysmon → Operational</code>; event 16 confirms the configuration change.</li>
+                    <li><strong>Watch volume for a day</strong> on the pilot group, then roll out. Add exclusions for your own noisy software as custom exclude modules and build again.</li>
+                    <li><strong>Roll back</strong> by applying the previous file (<span x-show="previous"><a :href="'#/build/' + (previous?.id || '')" x-text="previous ? 'build ' + previous.id.replace('T', ' ') : ''"></a></span><span x-show="!previous">any earlier build</span>) with <code>-c</code>, or reset to Sysmon's defaults:
+                      <div class="vsm-cmd"><code>sysmon64.exe -c --</code><button class="btn btn-sm btn-outline-secondary" x-copy="'sysmon64.exe -c --'">Copy</button></div></li>
+                  </ol>
+                </div>
+                <div class="col-lg-5">
+                  <div class="kc-callout mb-3"><span class="kc-callout-icon">🎯</span><div><div class="kc-callout-title">Target: Sysmon <span x-text="b.sysmon_version"></span> (schema <span x-text="b.schemaversion"></span>)</div><p class="kc-callout-body mb-0">The hosts must run this Sysmon major version or newer. An older binary rejects the file with a schema error – rebuild with a lower target on the Profile page instead.</p></div></div>
+                  <div class="kc-callout mb-3"><span class="kc-callout-icon">🏢</span><div><div class="kc-callout-title">Fleet rollout</div><p class="kc-callout-body mb-0">Distribute <code>sysmon64.exe</code> and the XML with your management tool and run the update command: a GPO startup script or scheduled task, Intune Win32 app / Proactive Remediation, or SCCM package. Point the script at a UNC or local path and run it as SYSTEM. Sysmon re-reads the configuration; a reboot is not needed.</p></div></div>
+                  <div class="kc-callout"><span class="kc-callout-icon">💾</span><div><div class="kc-callout-title">Keep this build</div><p class="kc-callout-body mb-0">Builds live only in this browser. Store the downloaded XML (and a JSON export from <em>Save / Load</em>) in your own repository so you can reproduce or roll back later.</p></div></div>
+                </div>
+              </div>
+            </div>
             <div x-show="tab === 'findings'">
               <div class="kc-callout kc-callout--success" x-show="!b.findings.length"><span class="kc-callout-icon">✓</span><div><p class="kc-callout-body mb-0">No findings. The configuration validates cleanly.</p></div></div>
               <template x-for="sev in ['error','warning','performance','recommendation','info']" :key="sev">
@@ -585,6 +622,61 @@
     </template>
   </main>
 </div>
+
+<!-- Wizard: guided start (auto-opens on first visit, also via "Start here") -->
+<div class="modal fade" id="wizard" tabindex="-1" x-data="wizard" x-init="if ($store.app.showWizard) $nextTick(() => open())" @open-wizard.window="step = 1; open()" @hidden.bs.modal="$store.app.dismissWizard()">
+  <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content vsm-wizard">
+    <div class="modal-header"><div><div class="kc-section-tag">Guided start · step <span x-text="step"></span> of 3</div><h2 class="kc-section-title mb-0" x-text="step === 1 ? 'What are you configuring?' : step === 2 ? 'Which Sysmon version runs on those hosts?' : 'Name the profile'"></h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Skip"></button></div>
+    <div class="modal-body">
+      <template x-if="step === 1">
+        <div>
+          <p class="text-muted">Each choice starts from one of upstream's published configurations. You can change every module afterwards.</p>
+          <div class="row g-3">
+            <template x-for="e in envs" :key="e.id">
+              <div class="col-md-6"><button type="button" class="vsm-env" :class="{ active: env === e.id }" @click="pick(e.id)">
+                <span class="vsm-env-icon" x-text="e.icon"></span><span class="vsm-env-title" x-text="e.title"></span><span class="vsm-env-text" x-text="e.text"></span>
+                <span class="kc-tag mt-2" x-text="($store.app.presets.find(p => p.id === e.preset)?.modules.length || 0) + ' modules'"></span></button></div>
+            </template>
+          </div>
+        </div>
+      </template>
+      <template x-if="step === 2">
+        <div>
+          <p class="text-muted">The version decides which events and fields the output may contain. Run <code>sysmon64</code> without arguments on a host – the first line prints the installed version.</p>
+          <div class="d-flex gap-2 flex-wrap mb-3"><template x-for="t in $store.app.sysmonTargets" :key="t.v"><button type="button" class="btn" :class="version === t.v ? 'btn-primary' : 'btn-outline-primary'" @click="version = t.v" x-text="t.label + ' · schema ' + t.schema"></button></template></div>
+          <div class="kc-callout"><span class="kc-callout-icon">💡</span><div><p class="kc-callout-body mb-0">Older targets: events such as FileExecutableDetected (15) or fields such as <code>User</code> on file events (14) are removed from the output so it loads cleanly – the build page lists what was dropped. Not installed yet? Choose 15.20 or newer and install the current Sysmon.</p></div></div>
+        </div>
+      </template>
+      <template x-if="step === 3">
+        <div>
+          <label class="form-label">Profile name</label><input class="form-control form-control-lg" x-model="name" placeholder="e.g. workstations" @keydown.enter="finish()">
+          <div class="kc-callout mt-3"><span class="kc-callout-icon">✓</span><div><div class="kc-callout-title" x-text="preset ? preset.name + ' · Sysmon ' + version : ''"></div><p class="kc-callout-body mb-0" x-text="preset ? preset.description : ''"></p></div></div>
+        </div>
+      </template>
+    </div>
+    <div class="modal-footer justify-content-between">
+      <button type="button" class="btn btn-link text-muted" data-bs-dismiss="modal">Skip – I know what I'm doing</button>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" x-show="step > 1" @click="step--">Back</button>
+        <button type="button" class="btn btn-primary" x-show="step === 2" @click="step = 3">Next</button>
+        <button type="button" class="btn btn-primary" x-show="step === 3" :disabled="!name.trim() || !preset" @click="finish()">Create profile</button>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- Shared "before you deploy" checklist -->
+<template id="tpl-checklist">
+  <div class="vsm-checklist">
+    <template x-for="(i, n) in $store.app.checklist" :key="n">
+      <div class="kc-callout kc-callout--compact" :class="i.level === 'error' ? 'kc-callout--danger' : i.level === 'warn' ? 'kc-callout--warning' : ''">
+        <span class="kc-callout-icon" x-text="i.level === 'error' ? '✖' : i.level === 'warn' ? '⚠' : '💡'"></span>
+        <div class="min-w-0"><div class="kc-callout-title"><span x-text="i.title"></span> <a class="small ms-1" x-show="i.href" :href="i.href">open →</a></div><div class="kc-callout-body small" x-text="i.detail"></div></div>
+      </div>
+    </template>
+    <div class="kc-callout kc-callout--success kc-callout--compact" x-show="!$store.app.checklist.length"><span class="kc-callout-icon">✓</span><div><div class="kc-callout-title">Nothing to flag – the selection looks deployable.</div></div></div>
+  </div>
+</template>
 
 <footer class="vsm-footer text-muted small">
   <span x-text="$store.app.title"></span> · runs entirely in your browser (upstream tooling compiled to WebAssembly) ·

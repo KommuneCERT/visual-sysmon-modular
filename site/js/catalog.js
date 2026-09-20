@@ -45,6 +45,8 @@ export class Catalog {
     this.upstream = new Map(data.modules.map(m => [m.rel, m.xml]));
     this.template = data.template || "";
     this.examples = data.examples || {};
+    this.presets = data.presets || [];
+    this.mdeCovered = data.mde_covered || [];
     this.generated = data.generated;
     this.upstreamCategories = data.categories.map(c => c.dirname);
     this.overlay = overlay; // live object {rel: xml}

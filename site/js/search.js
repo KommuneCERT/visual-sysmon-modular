@@ -1,6 +1,7 @@
 // Free-text search over a profile's modules → matching <Rule>/condition blocks with context (port of search.py).
 import { ruleToXml, conditionToXml, ruleTechnique } from "./model.js";
 import { kindOf } from "./catalog.js";
+import { describeRule, describeCondition } from "./describe.js";
 
 export const MAX_HITS = 150;
 
@@ -34,13 +35,13 @@ export function search(catalog, profile, { q = "", kind = "", category = "", sco
           const content = [r.name, ...r.conditions.map(c => `${c.field} ${c.condition} ${c.value} ${c.name}`)].join(" ");
           if (contentHit(terms, ctx, content)) {
             const t = ruleTechnique(r.name);
-            moduleHits.push({ ...base, ...common, block: "rule", name: r.name, xml: ruleToXml(r), techniques: t ? [t] : [] });
+            moduleHits.push({ ...base, ...common, block: "rule", name: r.name, xml: ruleToXml(r), techniques: t ? [t] : [], sentence: describeRule(r) });
           }
         }
         for (const c of ev.conditions) {
           if (contentHit(terms, ctx, `${c.field} ${c.condition} ${c.value} ${c.name}`)) {
             const t = ruleTechnique(c.name);
-            moduleHits.push({ ...base, ...common, block: "condition", name: c.name, xml: conditionToXml(c), techniques: t ? [t] : [] });
+            moduleHits.push({ ...base, ...common, block: "condition", name: c.name, xml: conditionToXml(c), techniques: t ? [t] : [], sentence: describeCondition(c) });
           }
         }
       }

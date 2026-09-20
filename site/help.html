@@ -7,6 +7,7 @@
   <nav class="kc-surface rounded-3 p-3 vsm-toc">
     <div class="small fw-bold text-uppercase mb-2">Contents</div>
     <a href="#/help/workflow">Workflow</a>
+    <a href="#/help/presets">Presets &amp; guided start</a>
     <a href="#/help/concepts">Profiles, overlay, builds</a>
     <a href="#/help/sysmon">Sysmon configuration basics</a>
     <a href="#/help/onmatch">include vs. exclude</a>
@@ -14,6 +15,7 @@
     <a href="#/help/conditions">Condition operators</a>
     <a href="#/help/modular">How sysmon-modular merges</a>
     <a href="#/help/versions">Sysmon versions &amp; schema</a>
+    <a href="#/help/deploy">Deploying</a>
     <a href="#/help/tips">Practical tips</a>
     <a href="#/help/data">Where the data lives</a>
   </nav>
@@ -33,6 +35,19 @@
     <li><strong>Build.</strong> The selected modules are merged into one <code>sysmonconfig.xml</code>. The result page shows validation findings, ATT&amp;CK coverage and a semantic diff against the previous build.</li>
     <li><strong>Deploy</strong> the downloaded file with <code>sysmon64 -c sysmonconfig.xml</code> (update) or <code>sysmon64 -accepteula -i sysmonconfig.xml</code> (install).</li>
   </ol>
+</section>
+
+<section id="presets" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">Presets &amp; guided start</h2>
+  <p>The guided start (first visit, or <em>Guided start</em> on the Profile page) creates a profile from one of upstream's published configurations. They are pure module selections, recomputed from the current upstream snapshot on every site build:</p>
+  <dl class="vsm-dl">
+    <dt>Balanced</dt><dd>Upstream's default <code>sysmonconfig.xml</code>: every module except FileDelete archiving (event 23). Start here for workstations and servers.</dd>
+    <dt>Balanced + FileDelete archiving</dt><dd>Adds event 23, which also copies deleted files into the Sysmon archive directory. Forensically useful, costs disk.</dd>
+    <dt>Defender for Endpoint augment</dt><dd>Balanced minus the modules whose telemetry MDE already collects (<code>0_custom_configuration/mde_covered_modules.txt</code> upstream), so Sysmon complements instead of duplicating.</dd>
+    <dt>Excludes only</dt><dd>Only the noise-exclusion modules: every event type is logged except known noise. Research use; very high volume.</dd>
+  </dl>
+  <p>The preset settings also mirror upstream's release build: comments preserved and unsupported events/fields <em>removed</em> for the chosen Sysmon target. Everything can be changed afterwards – a preset is just the starting selection.</p>
+  <p>The <strong>Before you deploy</strong> list on the Profile and build pages turns common pitfalls into plain-language notes: empty or exclude-only selections, high-volume event types (ImageLoad, ProcessAccess, Registry – marked with a red dot in the sidebar) without their exclusions, target-version mismatches, analyzer hints and a profile changed after its last build.</p>
 </section>
 
 <section id="concepts" class="kc-surface rounded-3 p-4 mb-4">
@@ -128,6 +143,12 @@
     </tbody>
   </table></div>
   <p>A module's own <code>schemaversion</code> only matters for the module file itself; the merged file uses the profile's target. <code>sysmon64 -s</code> prints the schema of an installed binary if you need to check which fields it knows.</p>
+</section>
+
+<section id="deploy" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">Deploying</h2>
+  <p>Every successful build has a <strong>Deploy</strong> tab with copyable commands. In short: install once with <code>sysmon64.exe -accepteula -i sysmonconfig.xml</code>, update an existing installation with <code>sysmon64.exe -c sysmonconfig.xml</code> (no reboot), verify with <code>sysmon64.exe -c</code>, and roll back by applying an earlier file or <code>sysmon64.exe -c --</code> for Sysmon's defaults. Events land in <code>Applications and Services Logs → Microsoft → Windows → Sysmon → Operational</code>.</p>
+  <p>Pilot on a few hosts and watch volume for a day before a fleet-wide rollout via GPO, Intune or SCCM. The target Sysmon version chosen in the profile must be the same or older than the binary on the hosts – a newer schema is rejected.</p>
 </section>
 
 <section id="tips" class="kc-surface rounded-3 p-4 mb-4">

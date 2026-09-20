@@ -180,3 +180,20 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 
 /* stat cards in a row share the tallest height, so a wrapped label never misaligns the row */
 .row > [class*="col-"] > .kc-stat-card { height: 100%; }
+
+/* beginner package */
+.vsm-sentence { font-size: 12.5px; color: var(--kc-gray-600); margin-top: 3px; line-height: 1.45; }
+.vsm-sentence code { font-size: 11px; }
+.vsm-hit .vsm-sentence { margin: 0 0 4px; }
+.vsm-vol-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--kc-red); flex-shrink: 0; }
+.vsm-checklist .kc-callout--compact { margin-bottom: 6px; }
+.vsm-checklist .kc-callout-body { margin: 2px 0 0; }
+.vsm-env { display: flex; flex-direction: column; align-items: flex-start; width: 100%; height: 100%; text-align: left; padding: 14px 16px; border: 2px solid var(--kc-gray-200); border-radius: var(--kc-radius-lg); background: #fff; transition: border-color .15s, box-shadow .15s; }
+.vsm-env:hover, .vsm-env.active { border-color: var(--kc-blue); box-shadow: var(--kc-shadow-md); }
+.vsm-env-icon { font-size: 22px; }
+.vsm-env-title { font-weight: 700; color: var(--kc-navy); margin-top: 4px; }
+.vsm-env-text { font-size: 13px; color: var(--kc-gray-600); margin-top: 4px; }
+.vsm-wizard .modal-header { border-bottom: 3px solid var(--kc-cyan); }
+.vsm-deploy li { margin-bottom: 12px; font-size: 14px; }
+.vsm-cmd { display: flex; gap: 8px; align-items: center; margin: 6px 0; background: var(--kc-navy); border-radius: var(--kc-radius-md); padding: 6px 10px; }
+.vsm-cmd code { color: #8fe3b4; flex: 1; font-size: 12.5px; white-space: nowrap; overflow-x: auto; }

@@ -44,6 +44,35 @@ def category_meta(dirname: str) -> dict:
     return {"dirname": dirname, "event_ids": ids, "label": label}
 
 
+def read_list(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+    return [ln.split("#")[0].strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.split("#")[0].strip()]
+
+
+def build_presets(rels: list[str], mde_covered: list[str]) -> list[dict]:
+    """Module selections that mirror upstream's published configurations
+    (.github/workflows/config-build.yml and the MDE augment helper)."""
+    release_opts = {"unsupported": "exclude", "preserve_comments": True}
+    no_filedelete = [r for r in rels if not r.startswith("23_file_delete/")]
+    covered = set(mde_covered)
+    return [
+        {"id": "balanced", "name": "Balanced", "tagline": "Upstream's default sysmonconfig.xml",
+         "description": "Every detection and noise-exclusion module except FileDelete archiving (event 23). The recommended starting point for workstations and servers: broad telemetry with the volume kept reasonable by the exclusion modules.",
+         "audience": ["workstations", "servers"], "options": release_opts, "modules": no_filedelete},
+        {"id": "balanced-filedelete", "name": "Balanced + FileDelete archiving", "tagline": "sysmonconfig-with-filedelete.xml",
+         "description": "Balanced plus FileDelete (event 23), which also copies deleted files into the Sysmon archive directory. Useful for forensics; plan for disk growth on the hosts.",
+         "audience": ["servers"], "options": release_opts, "modules": list(rels)},
+        {"id": "mde-augment", "name": "Defender for Endpoint augment", "tagline": "sysmonconfig-mde-augment.xml",
+         "description": "Balanced minus the modules whose telemetry Microsoft Defender for Endpoint already provides, so Sysmon adds detail where MDE is thin instead of duplicating it. Pick this when MDE is deployed on the same hosts.",
+         "audience": ["mde"], "options": release_opts, "modules": [r for r in rels if r not in covered]},
+        {"id": "excludes-only", "name": "Excludes only (verbose)", "tagline": "sysmonconfig-excludes-only.xml",
+         "description": "Only the noise-exclusion modules – every event type is logged except known noise. Very high volume; for short research sessions or lab hosts, not for a fleet.",
+         "audience": ["research"], "options": release_opts,
+         "modules": [r for r in no_filedelete if r.split("/")[1].startswith("exclude_")]},
+    ]
+
+
 def build_catalog(upstream: Path) -> dict:
     categories, modules = [], []
     for d in sorted((p for p in upstream.iterdir() if p.is_dir() and CATEGORY_RE.match(p.name)), key=lambda p: sort_key(p.name)):
@@ -59,12 +88,16 @@ def build_catalog(upstream: Path) -> dict:
         p = upstream / "0_custom_configuration" / name
         if p.exists():
             examples[name] = p.read_text(encoding="utf-8")
+    rels = [m["rel"] for m in modules]
+    mde_covered = [r for r in read_list(upstream / "0_custom_configuration" / "mde_covered_modules.txt") if r in set(rels)]
     return {
         "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "categories": categories,
         "modules": modules,
         "template": template.read_text(encoding="utf-8") if template.exists() else "",
         "examples": examples,
+        "mde_covered": mde_covered,
+        "presets": build_presets(rels, mde_covered),
     }
 
 

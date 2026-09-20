@@ -10,7 +10,9 @@ const catalog = newCatalog();
 test("default profile, export and import roundtrip", () => {
   const state = S.ensureDefault(S.emptyState(), catalog);
   assert.equal(state.current, "default");
-  assert.equal(state.profiles.default.modules.length, catalog.allRels().length);
+  assert.equal(state.profiles.default.preset, "balanced");
+  assert.equal(state.profiles.default.modules.length, catalog.presets.find(p => p.id === "balanced").modules.length);
+  assert.equal(state.profiles.default.unsupported, "exclude");
   state.overlay["22_dns_query/exclude_mine.xml"] = "<Sysmon/>";
   const exp = S.exportState(state, { commit: "abc", date: "2026-09-18" });
   assert.equal(exp.format, 1);

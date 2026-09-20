@@ -2,8 +2,19 @@
 // (localStorage; build XML in IndexedDB) and can be exported/imported as one JSON file.
 export const STORAGE_KEY = "vsm.v1";
 export const EXPORT_FORMAT = 1;
-export const SYSMON_VERSIONS = ["15", "14", "13", "12"];
-export const SCHEMA_FOR_VERSION = { 12: "4.40", 13: "4.60", 14: "4.83", 15: "4.90" };
+// Target Sysmon executable versions understood by upstream's ResolveBinarySchema (major[.minor]).
+export const SYSMON_TARGETS = [
+  { v: "15.20", schema: "4.91", label: "Sysmon 15.20 or newer" },
+  { v: "15", schema: "4.90", label: "Sysmon 15.0 – 15.19" },
+  { v: "14.1", schema: "4.83", label: "Sysmon 14.1 – 14.16" },
+  { v: "14", schema: "4.82", label: "Sysmon 14.0" },
+  { v: "13.1", schema: "4.60", label: "Sysmon 13.1 – 13.34" },
+  { v: "13", schema: "4.50", label: "Sysmon 13.0" },
+  { v: "12", schema: "4.40", label: "Sysmon 12" },
+];
+export const SYSMON_VERSIONS = SYSMON_TARGETS.map(t => t.v);
+export const SCHEMA_FOR_VERSION = Object.fromEntries(SYSMON_TARGETS.map(t => [t.v, t.schema]));
+export const DEFAULT_SYSMON_VERSION = "15.20";
 export const MAX_BUILDS = 10;
 
 const now = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -17,12 +28,16 @@ export function slugify(name) {
 
 export function newProfile(slug, name, opts = {}) {
   return {
-    slug, name, description: "", sysmon_version: "15", unsupported: "warn", preserve_comments: false,
+    slug, name, description: "", sysmon_version: DEFAULT_SYSMON_VERSION, unsupported: "warn", preserve_comments: false,
     force_grouprelation_or: false, analyze: true, modules: [], created: now(), updated: now(), ...opts,
   };
 }
 
-export function emptyState() { return { profiles: {}, current: "", overlay: {}, builds: {} }; }
+export function emptyState() { return { profiles: {}, current: "", overlay: {}, builds: {}, onboarded: false }; }
+
+export function presetProfile(slug, name, preset, extra = {}) {
+  return newProfile(slug, name, { modules: [...preset.modules], preset: preset.id, description: preset.tagline || "", ...(preset.options || {}), ...extra });
+}
 
 export function loadState(storage = globalThis.localStorage) {
   try {
@@ -48,7 +63,9 @@ export function ensureDefault(state, catalog) {
     if (!state.profiles[state.current]) state.current = Object.keys(state.profiles)[0];
     return state;
   }
-  const p = newProfile("default", "default", { description: "All upstream modules (equivalent to sysmonconfig.xml)", modules: catalog.allRels() });
+  const balanced = (catalog.presets || []).find(p => p.id === "balanced");
+  const p = balanced ? presetProfile("default", "default", balanced, { description: "Upstream's default sysmonconfig.xml (Balanced preset)" })
+    : newProfile("default", "default", { description: "All upstream modules", modules: catalog.allRels() });
   state.profiles.default = p;
   state.current = "default";
   return state;

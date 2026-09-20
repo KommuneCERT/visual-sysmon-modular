@@ -10,6 +10,14 @@ ATT&CK coverage, semantic diff) is compiled to WebAssembly, so the result is exa
 
 ## What you can do
 
+- **Guided start** – first visit asks what you are configuring (workstations, servers, hosts with
+  Defender for Endpoint, research) and which Sysmon version, then creates a profile from one of
+  upstream's published presets (Balanced, +FileDelete, MDE augment, Excludes only).
+- **Plain-language rules** – every module card, search hit and editor rule is explained as a sentence
+  ("Log ProcessCreate when Image is the process `wevtutil.exe` and CommandLine contains …").
+- **Before you deploy** – a checklist on the Profile and build pages flags empty/exclude-only selections,
+  high-volume event types without their noise exclusions, target-version pitfalls and analyzer hints.
+- **Deploy tab** – copyable install/update/verify/rollback commands for each build.
 - **Search** the current configuration as you type – hits are the matching `<Rule>`/condition in
   context (module → RuleGroup → event), syntax-highlighted with the match marked.
 - **Profiles** – independent module selections with their own target Sysmon version (12–15) and

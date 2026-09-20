@@ -6,6 +6,8 @@ import { engine, engineStatus, onEngineStatus } from "./engine.js";
 import { search } from "./search.js";
 import { buildMatrix, ruleTagging } from "./attack.js";
 import { parseList, formatList } from "./includelist.js";
+import { describeModule, describeRule, describeBare, describeHit } from "./describe.js";
+import { checklist, volumeOf } from "./checks.js";
 
 export const APP_TITLE = "Visual Sysmon Modular";
 const SEVERITY_ORDER = ["error", "warning", "performance", "recommendation", "info"];
@@ -93,6 +95,14 @@ document.addEventListener("alpine:init", () => {
     if (!el.textContent.trim()) el.textContent = "?";
     new window.bootstrap.Popover(el, { content: evaluate(expression), html: true, trigger: "hover focus", placement: "top" });
   });
+  // <button x-copy="text"> copies to the clipboard and flashes "Copied"
+  A.directive("copy", (el, { expression }, { evaluateLater }) => {
+    const get = evaluateLater(expression);
+    el.addEventListener("click", () => get(async text => {
+      try { await navigator.clipboard.writeText(text); } catch { return; }
+      const old = el.textContent; el.textContent = "Copied ✓"; setTimeout(() => { el.textContent = old; }, 1500);
+    }));
+  });
   // <div x-include="'tpl-id'"> clones a <template id> into the element (shared markup)
   A.directive("include", (el, { expression }, { evaluate }) => {
     const tpl = document.getElementById(evaluate(expression));
@@ -122,6 +132,7 @@ document.addEventListener("alpine:init", () => {
     flash: "",
     busy: "",                      // text while building / loading engine
     sysmonVersions: S.SYSMON_VERSIONS,
+    sysmonTargets: S.SYSMON_TARGETS,
     schemaFor: S.SCHEMA_FOR_VERSION,
     get upstream() { return vsm.upstream; },
     get catalog() { return vsm.catalog; },
@@ -136,8 +147,13 @@ document.addEventListener("alpine:init", () => {
       return vsm.catalog.categories().map(c => ({ cat: c, selected: c.modules.filter(m => sel.has(m.rel)).length, total: c.modules.length }));
     },
     get overlayRels() { this.tick; return vsm.catalog.overlayRels(); },
+    get presets() { return vsm.catalog.presets; },
+    get checklist() { this.tick; const p = this.profile; return p ? checklist(vsm.catalog, A.raw(p), this.buildsFor(p.slug)[0] || null) : []; },
+    volumeOf,
+    get showWizard() { return !this.state.onboarded && !Object.values(this.state.builds).some(b => b.length) && this.overlayRels.length === 0; },
+    dismissWizard() { this.state.onboarded = true; this.persist(); },
 
-    persist() { if (this.profile) this.profile.updated = new Date().toISOString().slice(0, 19) + "Z"; S.saveState(A.raw(this.state)); },
+    persist(touch = true) { if (touch && this.profile) this.profile.updated = new Date().toISOString(); S.saveState(A.raw(this.state)); },
     notify(msg) { this.flash = msg; clearTimeout(this._flashT); this._flashT = setTimeout(() => { this.flash = ""; }, 5000); },
     go(hash) { location.hash = hash; },
     // #/help/<section> – scroll the section into view (TOC links can't use plain #id with hash routing)
@@ -150,12 +166,15 @@ document.addEventListener("alpine:init", () => {
 
     // ── profiles ──
     switchProfile(slug) { if (this.state.profiles[slug]) { this.state.current = slug; this.persist(); this.go("#/"); } },
-    createProfile(name, mode, copyFrom) {
+    // mode: "all" | "none" | "preset:<id>"
+    createProfile(name, mode, copyFrom, extra = {}) {
       const slug = S.slugify(name);
       if (this.state.profiles[slug]) throw new Error("Profile already exists");
       const src = copyFrom && this.state.profiles[copyFrom];
+      const preset = mode?.startsWith("preset:") ? vsm.catalog.presets.find(x => x.id === mode.slice(7)) : null;
       const p = src ? { ...JSON.parse(JSON.stringify(A.raw(src))), slug, name: name.trim(), created: new Date().toISOString() }
-        : S.newProfile(slug, name.trim(), { modules: mode === "all" ? vsm.catalog.allRels() : [] });
+        : preset ? S.presetProfile(slug, name.trim(), preset, extra)
+        : S.newProfile(slug, name.trim(), { modules: mode === "all" ? vsm.catalog.allRels() : [], ...extra });
       this.state.profiles[slug] = p; this.state.current = slug; this.persist();
       return slug;
     },
@@ -274,7 +293,7 @@ document.addEventListener("alpine:init", () => {
         }
         const dropped = S.addBuild(this.state, p.slug, meta);
         if (dropped.length) S.deleteBuildXml(dropped);
-        this.persist();
+        this.persist(false);   // a build does not modify the profile
         this.go(`#/build/${id}`);
       } finally { this.busy = ""; }
     },
@@ -298,10 +317,11 @@ document.addEventListener("alpine:init", () => {
     newModule(i) { return i === 0 || this.result.hits[i].rel !== this.result.hits[i - 1].rel; },
     newCtx(i) { if (this.newModule(i)) return true; const a = this.result.hits[i], b = this.result.hits[i - 1]; return a.group_name !== b.group_name || a.event_type !== b.event_type || a.onmatch !== b.onmatch; },
     get mark() { return this.result ? this.result.terms.join(" ") : ""; },
+    sentence(hit) { return describeHit(hit); },
   }));
 
   A.data("pageProfile", () => ({
-    form: {}, newName: "", newMode: "all", copyFrom: "", importMode: "replace", stateImportMode: "replace",
+    form: {}, newName: "", newMode: "preset:balanced", copyFrom: "", importMode: "replace", stateImportMode: "replace",
     init() { const p = this.$store.app.profile; this.form = { name: p.name, description: p.description, sysmon_version: p.sysmon_version, unsupported: p.unsupported, analyze: p.analyze, preserve_comments: p.preserve_comments, force_grouprelation_or: p.force_grouprelation_or }; },
     save() { Object.assign(this.$store.app.profile, this.form, { name: this.form.name.trim() || this.$store.app.profile.name }); this.$store.app.persist(); this.$store.app.notify("Settings saved"); },
     create() { try { const slug = this.$store.app.createProfile(this.newName, this.newMode, this.copyFrom); this.newName = ""; this.$store.app.notify(`Profile '${slug}' created`); this.init(); } catch (e) { this.$store.app.notify(e.message); } },
@@ -311,7 +331,12 @@ document.addEventListener("alpine:init", () => {
   }));
 
   A.data("pageCategory", () => ({
-    q: "", kind: "", dupName: {},
+    q: "", kind: "", dupName: {}, expanded: {},
+    volume(cat) { return volumeOf(cat); },
+    explain(m) {
+      try { return describeModule(vsm.catalog.parsed(m.rel), { max: this.expanded[m.rel] ? 999 : 1 }); }
+      catch { return { sentences: [], more: 0, total: 0 }; }
+    },
     get cat() { this.$store.app.tick; return vsm.catalog.categories().find(c => c.dirname === this.$store.app.route.cat) || null; },
     get modules() {
       const q = this.q.trim().toLowerCase();
@@ -332,6 +357,10 @@ document.addEventListener("alpine:init", () => {
 
   A.data("pageEditor", () => ({
     model: null, m: null, error: "", dirty: false, saving: false, findings: null, hasErrors: false, status: "", xmlPreview: "",
+    explain: (() => { try { return localStorage.getItem("vsm.explain") !== "0"; } catch { return true; } })(),
+    toggleExplain() { this.explain = !this.explain; try { localStorage.setItem("vsm.explain", this.explain ? "1" : "0"); } catch { /* ignore */ } },
+    explainRule(ev, r) { return `${ev.onmatch === "exclude" ? "Ignore" : "Log"} ${ev.event_type} when ${describeRule(r)}`; },
+    explainBare(rg, ev) { return `${ev.onmatch === "exclude" ? "Ignore" : "Log"} ${ev.event_type} when ${describeBare(ev.conditions, rg.group_relation)}`; },
     schema: vsm.fields, eventTypes: Object.keys(vsm.fields.events),
     init() {
       const rel = this.$store.app.route.rel;
@@ -390,6 +419,8 @@ document.addEventListener("alpine:init", () => {
 
   A.data("pageBuild", () => ({
     xml: null, diffHtml: "", diffBefore: "", tab: "findings",
+    get previous() { return this.$store.app.buildsFor(this.$store.app.state.current).find(x => x.ok && x.id !== this.b?.id && x.id < this.b?.id) || null; },
+    fileName() { return `sysmonconfig-${this.b.profile}-${this.b.id}.xml`; },
     get b() { return this.$store.app.build(this.$store.app.route.id); },
     get grouped() { const g = {}; for (const s of SEVERITY_ORDER) g[s] = (this.b?.findings || []).filter(f => f.severity === s); return g; },
     get matrix() { return this.b?.coverage ? buildMatrix(this.b.coverage) : null; },
@@ -397,6 +428,7 @@ document.addEventListener("alpine:init", () => {
     sevLabel: s => SEV_LABEL[s],
     async init() {
       if (!this.b) return;
+      this.tab = this.b.ok && !this.b.summary.error ? "deploy" : "findings";
       this.diffBefore = this.b.diff_before || this.others[0]?.id || "";
       if (this.b.diff) this.diffHtml = renderDiff(this.b.diff, this.b.diff_before, this.b.id);
     },
@@ -423,6 +455,28 @@ document.addEventListener("alpine:init", () => {
     },
     async navigator(v) { const r = await this.$store.app.navigatorLayer(this.$store.app.profile.modules, v); if (!r.ok) this.$store.app.notify(r.error); else if (r.notes?.length) this.$store.app.notify(r.notes[0]); },
     json() { this.$store.app.coverageReport(this.$store.app.profile.modules).then(r => r.ok && download(`${this.$store.app.profile.slug}-coverage.json`, JSON.stringify(r.report, null, 2), "application/json")); },
+  }));
+
+  A.data("wizard", () => ({
+    step: 1, env: "", version: S.DEFAULT_SYSMON_VERSION, name: "",
+    envs: [
+      { id: "workstations", preset: "balanced", title: "Workstations", icon: "💻", text: "Upstream's Balanced configuration: all detections plus the noise exclusions for common desktop software. The right default for most fleets." },
+      { id: "servers", preset: "balanced", title: "Servers", icon: "🖥️", text: "Also Balanced. Servers are quieter per host but run different software – expect to add a few exclusions of your own after the first days." },
+      { id: "mde", preset: "mde-augment", title: "Hosts with Defender for Endpoint", icon: "🛡️", text: "Balanced minus what MDE already records, so Sysmon adds detail (command lines, DNS, named pipes…) instead of duplicating telemetry." },
+      { id: "research", preset: "excludes-only", title: "Research / lab (verbose)", icon: "🔬", text: "Only the exclusion modules: every event type is logged except known noise. Very high volume – for short investigations on a few hosts." },
+    ],
+    get preset() { const e = this.envs.find(x => x.id === this.env); return e ? vsm.catalog.presets.find(p => p.id === e.preset) : null; },
+    pick(id) { this.env = id; this.name = this.name || this.envs.find(x => x.id === id).title.toLowerCase().split(" ")[0]; this.step = 2; },
+    finish() {
+      try {
+        const slug = this.$store.app.createProfile(this.name || this.env, `preset:${this.preset.id}`, "", { sysmon_version: this.version });
+        this.$store.app.dismissWizard();
+        window.bootstrap.Modal.getInstance(document.getElementById("wizard"))?.hide();
+        this.$store.app.notify(`Profile '${slug}' created from the ${this.preset.name} preset – next: press Build`);
+        this.$store.app.go("#/profile");
+      } catch (e) { this.$store.app.notify(e.message); }
+    },
+    open() { new window.bootstrap.Modal(document.getElementById("wizard")).show(); },
   }));
 
   A.data("attackMatrix", () => ({
