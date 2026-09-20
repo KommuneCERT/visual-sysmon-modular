@@ -34,7 +34,7 @@ def create_profile(name: str = Form(...), mode: str = Form("all"), copy_from: st
         else:
             prof = profiles.create(name, select_all=(mode == "all"))
     except FileExistsError:
-        return RedirectResponse(f"/?msg=Profil+findes+allerede", status_code=303)
+        return RedirectResponse(f"/?msg=Profile+already+exists", status_code=303)
     except ValueError as exc:
         return RedirectResponse(f"/?msg={exc}", status_code=303)
     return RedirectResponse(f"/p/{prof.slug}/", status_code=303)
@@ -60,7 +60,7 @@ def update_settings(
     prof.force_grouprelation_or = force_grouprelation_or
     prof.analyze = analyze
     profiles.save(prof)
-    return RedirectResponse(f"/p/{slug}/?msg=Indstillinger+gemt", status_code=303)
+    return RedirectResponse(f"/p/{slug}/?msg=Settings+saved", status_code=303)
 
 
 @router.post("/p/{slug}/delete")
@@ -95,7 +95,7 @@ async def import_list(slug: str, file: UploadFile, mode: str = Form("replace")):
     else:
         prof.modules = rels
     profiles.save(prof)
-    return RedirectResponse(f"/p/{slug}/?msg={len(rels)}+moduler+behandlet", status_code=303)
+    return RedirectResponse(f"/p/{slug}/?msg={len(rels)}+modules+processed", status_code=303)
 
 
 @router.get("/p/{slug}/include_rules.txt")

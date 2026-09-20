@@ -91,7 +91,7 @@ def new_module(slug: str, category: str, name: str = Form(...), kind: str = Form
         rel = overlay.new_module(category, kind, name, event_type,
                                  schemaversion=config.SCHEMA_FOR_VERSION.get(prof.sysmon_version, "4.90"))
     except FileExistsError as exc:
-        return RedirectResponse(f"/p/{slug}/c/{category}?msg=Modulet+findes+allerede:+{exc}", status_code=303)
+        return RedirectResponse(f"/p/{slug}/c/{category}?msg=Module+already+exists:+{exc}", status_code=303)
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     prof.modules = sorted(prof.selected | {rel})
@@ -106,7 +106,7 @@ def duplicate(slug: str, rel: str, name: str = Form(...)):
     try:
         new_rel = overlay.duplicate(rel, name)
     except FileExistsError as exc:
-        return RedirectResponse(f"/p/{slug}/c/{rel.split('/')[0]}?msg=Findes+allerede:+{exc}", status_code=303)
+        return RedirectResponse(f"/p/{slug}/c/{rel.split('/')[0]}?msg=Already+exists:+{exc}", status_code=303)
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     prof.modules = sorted(prof.selected | {new_rel})
@@ -124,7 +124,7 @@ def revert(slug: str, rel: str):
             if rel in p.modules:
                 p.modules = [m for m in p.modules if m != rel]
                 profiles.save(p)
-    return RedirectResponse(f"/p/{slug}/c/{mod.category}?msg=Modul+nulstillet", status_code=303)
+    return RedirectResponse(f"/p/{slug}/c/{mod.category}?msg=Module+reset", status_code=303)
 
 
 # ── structured editor ────────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ def edit_module(request: Request, slug: str, rel: str):
     try:
         parsed = sysmon_xml.parse(overlay.read_text(rel))
     except Exception as exc:
-        return RedirectResponse(f"/p/{slug}/m/{rel}/raw?msg=Kan+ikke+parses+strukturelt:+{exc}", status_code=303)
+        return RedirectResponse(f"/p/{slug}/m/{rel}/raw?msg=Cannot+be+parsed+structurally:+{exc}", status_code=303)
     return render(request, "editor.html", **sidebar_ctx(prof, active=mod.category),
                   m=mod, model=parsed.to_dict(), schema=sysmon_xml.SCHEMA,
                   flash=request.query_params.get("msg", ""))
@@ -193,6 +193,6 @@ def save_raw(request: Request, slug: str, rel: str, xml: str = Form(...), force:
     if has_errors and not force:
         return render(request, "raw.html", **sidebar_ctx(prof, active=mod.category), m=mod, xml=xml,
                       findings=findings, summary=builder.summarize(findings), exit_code=code,
-                      parse_error=err, flash="Ikke gemt – ret fejlene eller vælg 'Gem alligevel'.")
+                      parse_error=err, flash="Not saved – fix the errors or choose 'Save anyway'.")
     overlay.write_text(rel, xml if xml.endswith("\n") else xml + "\n")
-    return RedirectResponse(f"/p/{slug}/m/{rel}/raw?msg=Gemt+til+overlay", status_code=303)
+    return RedirectResponse(f"/p/{slug}/m/{rel}/raw?msg=Saved+to+overlay", status_code=303)

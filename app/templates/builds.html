@@ -2,17 +2,17 @@
 {% block title %}Builds · {{ profile.name }}{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-end mb-3">
-  <div><span class="kc-section-tag">Profil {{ profile.name }}</span><h1 class="kc-section-title mb-0">Build-historik</h1></div>
-  <form method="post" action="/p/{{ profile.slug }}/build" class="m-0"><button class="btn btn-sm btn-primary">▶ Build nu</button></form>
+  <div><span class="kc-section-tag">Profile {{ profile.name }}</span><h1 class="kc-section-title mb-0">Build history</h1></div>
+  <form method="post" action="/p/{{ profile.slug }}/build" class="m-0"><button class="btn btn-sm btn-primary">▶ Build now</button></form>
 </div>
-{% if not builds %}<p class="text-muted">Ingen builds endnu.</p>{% else %}
+{% if not builds %}<p class="text-muted">No builds yet.</p>{% else %}
 <div class="kc-surface rounded-3 p-3">
 <div class="table-responsive"><table class="table kc-table mb-0">
-  <thead><tr><th>Build</th><th>Status</th><th>Sysmon</th><th>Moduler</th><th>Fejl</th><th>Adv.</th><th>Perf.</th><th>Anbef.</th><th>Størrelse</th><th></th></tr></thead>
+  <thead><tr><th>Build</th><th>Status</th><th>Sysmon</th><th>Modules</th><th>Errors</th><th>Warn.</th><th>Perf.</th><th>Recom.</th><th>Size</th><th></th></tr></thead>
   <tbody>{% for b in builds %}
   <tr>
     <td><a href="/p/{{ profile.slug }}/builds/{{ b.id }}">{{ b.id|replace('T',' ') }}</a></td>
-    <td>{% if b.ok %}<span class="kc-severity kc-severity-low">OK</span>{% else %}<span class="kc-severity kc-severity-high">FEJL ({{ b.exit_code }})</span>{% endif %}</td>
+    <td>{% if b.ok %}<span class="kc-severity kc-severity-low">OK</span>{% else %}<span class="kc-severity kc-severity-high">FAILED ({{ b.exit_code }})</span>{% endif %}</td>
     <td>{{ b.sysmon_version }} / {{ b.schemaversion }}</td>
     <td>{{ b.module_count }}</td>
     <td>{{ b.summary.error }}</td><td>{{ b.summary.warning }}</td><td>{{ b.summary.performance }}</td><td>{{ b.summary.recommendation }}</td>

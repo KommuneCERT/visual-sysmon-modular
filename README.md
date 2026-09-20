@@ -1,55 +1,57 @@
 # Visual Sysmon Modular
 
-Web-GUI oven på [olafhartong/sysmon-modular](https://github.com/olafhartong/sysmon-modular).
-I stedet for at rette XML-moduler og include-lister i hånden vælger man moduler pr. kategori,
-redigerer regler i en formular (eller som rå XML med validering) og trykker **Build** –
-så merger upstreams eget CLI (`sysmon-modular merge`) det hele til en `sysmonconfig.xml`.
+A web GUI on top of [olafhartong/sysmon-modular](https://github.com/olafhartong/sysmon-modular).
+Instead of hand-editing XML modules and include lists, you pick modules per category, edit rules in a
+form (or as raw XML with validation) and press **Build** – upstream's own CLI (`sysmon-modular merge`)
+then merges everything into a `sysmonconfig.xml`.
 
-Alt kører i én Docker-container: Python/FastAPI + HTMX/Alpine i frontend, upstreams Go-CLI som build-motor.
+Everything runs in a single Docker container: Python/FastAPI with HTMX/Alpine on the front end and
+upstream's Go CLI as the build engine.
 
-## Kom i gang
+## Getting started
 
 ```bash
-git clone --recurse-submodules <dette repo>
+git clone --recurse-submodules <this repo>
 cd visual-sysmon-modular
 docker compose up -d --build
 # → http://localhost:8080
 ```
 
-Første start opretter profilen **default** med alle upstream-moduler valgt.
+The first start creates a **default** profile with every upstream module selected.
 
-## Sådan virker det
+## How it works
 
 ```
-/opt/sysmon-modular   upstream-moduler (git-submodule, read-only i containeren)
-/data                 Docker-volume med brugerens tilstand
-  profiles/<slug>.json    valgte moduler + build-indstillinger
-  overlay/<kategori>/*.xml   redigerede/egne moduler (copy-on-write oven på upstream)
-  builds/<profil>/<tid>/  sysmonconfig.xml, include_rules.txt, build.log, coverage.json, diff.json
+/opt/sysmon-modular   upstream modules (git submodule, read-only inside the container)
+/data                 Docker volume with user state
+  profiles/<slug>.json       selected modules + build settings
+  overlay/<category>/*.xml   edited/custom modules (copy-on-write on top of upstream)
+  builds/<profile>/<time>/   sysmonconfig.xml, include_rules.txt, build.log, coverage.json, diff.json
 ```
 
-- **Profiler** – flere uafhængige valg (fx `servers`, `workstations`) med hver sin Sysmon-målversion (12–15).
-- **Kategorier** – de samme mapper som upstream (`1_process_creation`, `3_network_connection_initiated`, …).
-  Hvert modul kan slås til/fra; "Vælg alle / kun includes / kun excludes" pr. kategori.
-- **Regel-editor** – RuleGroup → event (include/exclude) → Rule (and/or) → betingelser, med felt-
-  og condition-dropdowns fra Sysmon-skemaet. Gem validerer via `sysmon-modular validate`.
-- **Rå XML** – tekst-editor med *Validér* (samme CLI) og "gem alligevel".
-- **Overlay** – upstream røres aldrig. Redigerer man et upstream-modul, gemmes en kopi i `overlay/`,
-  som skygger for originalen ved build. *Nulstil til upstream* sletter kopien. Egne moduler oprettes kun i overlay.
-- **Build** – komponerer upstream + overlay til et midlertidigt træ og kører
-  `sysmon-modular merge --include-list … --sysmon-version … --analyze`. Resultatsiden viser fund
-  (fejl/advarsler/performance/anbefalinger), ATT&CK-coverage, semantisk diff mod forrige build og log.
-- **Import/eksport** af include-/exclude-lister i upstreams tekstformat, så eksisterende opsætninger kan genbruges.
+- **Profiles** – several independent selections (e.g. `servers`, `workstations`), each with its own
+  target Sysmon version (12–15).
+- **Categories** – the same directories as upstream (`1_process_creation`, `3_network_connection_initiated`, …).
+  Every module can be toggled; "select all / includes / excludes" per category.
+- **Rule editor** – RuleGroup → event (include/exclude) → Rule (and/or) → conditions, with field and
+  condition dropdowns from the Sysmon schema. Saving validates via `sysmon-modular validate`.
+- **Raw XML** – text editor with *Validate* (same CLI) and "save anyway".
+- **Overlay** – upstream is never touched. Editing an upstream module stores a copy in `overlay/` that
+  shadows the original at build time. *Reset to upstream* deletes the copy. Custom modules only live in the overlay.
+- **Build** – composes upstream + overlay into a temporary tree and runs
+  `sysmon-modular merge --include-list … --sysmon-version … --analyze`. The result page shows findings
+  (errors/warnings/performance/recommendations), ATT&CK coverage, a semantic diff against the previous build, and the log.
+- **Import/export** of include/exclude lists in upstream's text format, so existing setups can be reused.
 
-## Opdatér upstream
+## Updating upstream
 
 ```bash
 git submodule update --remote vendor/sysmon-modular
 docker compose up -d --build
 ```
 
-Profiler og overlay ligger i volumen og overlever både rebuild og upstream-opdateringer.
-Moduler der forsvinder upstream fjernes automatisk fra profiler ved næste gem.
+Profiles and the overlay live in the volume and survive both rebuilds and upstream updates.
+Modules that disappear upstream are dropped from profiles on the next save.
 
 ## Tests
 
@@ -58,15 +60,29 @@ docker compose build
 docker run --rm visual-sysmon-modular:latest python -m pytest -q -p no:cacheprovider
 ```
 
-Testene kører mod det rigtige upstream-træ og CLI i containeren (parse/serialise, overlay, profiler, build, HTTP).
+The tests run against the real upstream tree and CLI inside the container (parse/serialise, overlay,
+profiles, build, HTTP).
 
-## Data på host i stedet for named volume
+## Host directory instead of a named volume
 
-Byt volumen i `docker-compose.yml` til `./data:/data` og tilføj `user: "${UID}:${GID}"` på servicen,
-så containeren kan skrive i mappen.
+Change the volume in `docker-compose.yml` to `./data:/data` and add `user: "${UID}:${GID}"` to the
+service so the container can write to the directory.
+
+## Configuration
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `APP_TITLE` | `Visual Sysmon Modular` | Title shown in the navbar |
+| `UPSTREAM_DIR` | `/opt/sysmon-modular` | Upstream module tree |
+| `DATA_DIR` | `/data` | Profiles, overlay and builds |
+| `CLI_BIN` | `/usr/local/bin/sysmon-modular` | Upstream CLI binary |
 
 ## Design
 
-UI'et bruger KommuneCERTs Bootstrap 5-designsystem (`app/static/kommunecert-theme.css`, kopieret fra
-`../stylesheet/`). Projekt-specifikke tilpasninger ligger i `app/static/app.css` og indlæses efter theme'et.
-Bootstrap, HTMX og Alpine er vendored i `app/static/vendor/` – ingen CDN-afhængigheder.
+The UI uses the KommuneCERT Bootstrap 5 design system (`app/static/kommunecert-theme.css`).
+Project-specific styles live in `app/static/app.css` and load after the theme.
+Bootstrap, HTMX and Alpine are vendored in `app/static/vendor/` – no CDN dependencies.
+
+## License
+
+This project wraps sysmon-modular, which is licensed under its own terms (see `vendor/sysmon-modular/license.md`).

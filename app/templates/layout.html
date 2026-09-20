@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="da">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,21 +27,21 @@
   <div class="d-flex gap-2 align-items-center flex-wrap">
     <div class="dropdown">
       <button class="btn btn-sm btn-outline-light dropdown-toggle vsm-profile-btn" data-bs-toggle="dropdown">
-        Profil: <strong>{{ profile.name }}</strong>
+        Profile: <strong>{{ profile.name }}</strong>
       </button>
       <ul class="dropdown-menu dropdown-menu-end">
         {% for p in all_profiles %}
-        <li><a class="dropdown-item {% if p.slug == profile.slug %}active{% endif %}" href="/p/{{ p.slug }}/">{{ p.name }} <span class="text-muted small">· {{ p.modules|length }} moduler · v{{ p.sysmon_version }}</span></a></li>
+        <li><a class="dropdown-item {% if p.slug == profile.slug %}active{% endif %}" href="/p/{{ p.slug }}/">{{ p.name }} <span class="text-muted small">· {{ p.modules|length }} modules · v{{ p.sysmon_version }}</span></a></li>
         {% endfor %}
         <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="/p/{{ profile.slug }}/#new-profile">+ Ny profil</a></li>
+        <li><a class="dropdown-item" href="/p/{{ profile.slug }}/#new-profile">+ New profile</a></li>
       </ul>
     </div>
-    <a href="/p/{{ profile.slug }}/" class="kc-nav-link {% if request.url.path == '/p/' ~ profile.slug ~ '/' %}active{% endif %}">Overblik</a>
+    <a href="/p/{{ profile.slug }}/" class="kc-nav-link {% if request.url.path == '/p/' ~ profile.slug ~ '/' %}active{% endif %}">Overview</a>
     <a href="/p/{{ profile.slug }}/builds" class="kc-nav-link {% if '/builds' in request.url.path %}active{% endif %}">Builds</a>
     <span class="kc-tag kc-tag-blue">Sysmon {{ profile.sysmon_version }} · schema {{ schema_for_version[profile.sysmon_version] }}</span>
     <form method="post" action="/p/{{ profile.slug }}/build" class="m-0">
-      <button class="btn btn-sm btn-info fw-bold text-white px-3" type="submit" title="Merge de valgte moduler til sysmonconfig.xml">▶ Build</button>
+      <button class="btn btn-sm btn-info fw-bold text-white px-3" type="submit" title="Merge the selected modules into sysmonconfig.xml">▶ Build</button>
     </form>
   </div>
   {% endif %}

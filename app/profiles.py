@@ -92,7 +92,7 @@ def ensure_default() -> Profile:
     profiles = list_profiles()
     if profiles:
         return profiles[0]
-    return create("default", description="Alle upstream-moduler (svarer til sysmonconfig.xml)")
+    return create("default", description="All upstream modules (equivalent to sysmonconfig.xml)")
 
 
 # ── include-list import / export (same format as upstream 0_custom_configuration) ──

@@ -4,34 +4,34 @@
 <div x-data="moduleEditor()" x-init="init()">
 <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
   <div>
-    <span class="kc-section-tag"><a href="/p/{{ profile.slug }}/c/{{ m.category }}">{{ m.category }}</a> · regel-editor</span>
+    <span class="kc-section-tag"><a href="/p/{{ profile.slug }}/c/{{ m.category }}">{{ m.category }}</a> · rule editor</span>
     <h1 class="kc-section-title mb-0"><code>{{ m.filename }}</code></h1>
-    <div class="small text-muted">Kilde: {{ m.source }}{% if m.source == 'upstream' %} – gemmes som overlay-kopi ved første ændring{% endif %} · kommentarer i XML bevares ikke af den strukturerede editor (brug rå XML til det)</div>
+    <div class="small text-muted">Source: {{ m.source }}{% if m.source == 'upstream' %} – saved as an overlay copy on first change{% endif %} · XML comments are not preserved by the rule editor (use raw XML for that)</div>
   </div>
   <div class="d-flex gap-2 align-items-center">
-    <span class="kc-tag kc-tag-amber" x-show="dirty" x-cloak>ugemte ændringer</span>
+    <span class="kc-tag kc-tag-amber" x-show="dirty" x-cloak>unsaved changes</span>
     <div class="btn-group btn-group-sm">
-      <a class="btn btn-outline-secondary" href="/p/{{ profile.slug }}/m/{{ m.rel }}/raw">Rå XML</a>
-      <a class="btn btn-outline-secondary" href="/p/{{ profile.slug }}/c/{{ m.category }}">Tilbage</a>
+      <a class="btn btn-outline-secondary" href="/p/{{ profile.slug }}/m/{{ m.rel }}/raw">Raw XML</a>
+      <a class="btn btn-outline-secondary" href="/p/{{ profile.slug }}/c/{{ m.category }}">Back</a>
     </div>
-    <button class="btn btn-sm btn-primary px-3" @click="save(false)" :disabled="saving">Gem</button>
+    <button class="btn btn-sm btn-primary px-3" @click="save(false)" :disabled="saving">Save</button>
   </div>
 </div>
 
 <div class="kc-surface p-3 rounded-3 mb-3 d-flex gap-3 align-items-end flex-wrap">
   <div><label class="form-label small mb-0">schemaversion</label><input class="form-control form-control-sm" style="width:7em" x-model="model.schemaversion" @input="dirty=true"></div>
   <button class="btn btn-sm btn-outline-primary" @click="addGroup()">+ RuleGroup</button>
-  <span class="text-muted small ms-auto">Rækkefølge: RuleGroup → event (include/exclude) → Rule (and/or) → betingelser</span>
+  <span class="text-muted small ms-auto">Hierarchy: RuleGroup → event (include/exclude) → Rule (and/or) → conditions</span>
 </div>
 
 <template x-for="(rg, gi) in model.rulegroups" :key="gi">
   <section class="kc-surface rounded-3 mb-4 vsm-group">
     <header class="vsm-group-head d-flex gap-2 align-items-center flex-wrap">
       <span class="kc-tag kc-tag-navy">RuleGroup</span>
-      <input class="form-control form-control-sm flex-grow-1" placeholder="Navn (fx technique_id=T1059,technique_name=Command and Scripting Interpreter)" x-model="rg.name" @input="dirty=true">
+      <input class="form-control form-control-sm flex-grow-1" placeholder="Name (e.g. technique_id=T1059,technique_name=Command and Scripting Interpreter)" x-model="rg.name" @input="dirty=true">
       <select class="form-select form-select-sm w-auto" x-model="rg.group_relation" @change="dirty=true"><option value="or">or</option><option value="and">and</option></select>
       <button class="btn btn-sm btn-outline-primary" @click="addEvent(rg)">+ Event</button>
-      <button class="btn btn-sm btn-outline-danger" @click="if(confirm('Fjern hele RuleGroup?')) { model.rulegroups.splice(gi,1); dirty=true }">✕</button>
+      <button class="btn btn-sm btn-outline-danger" @click="if(confirm('Remove the entire RuleGroup?')) { model.rulegroups.splice(gi,1); dirty=true }">✕</button>
     </header>
 
     <template x-for="(ev, ei) in rg.events" :key="ei">
@@ -41,23 +41,23 @@
             <template x-for="et in eventTypes" :key="et"><option :value="et" x-text="et + ' (' + schema.events[et].event_id + ')'"></option></template>
           </select>
           <select class="form-select form-select-sm w-auto" x-model="ev.onmatch" @change="dirty=true"><option value="include">onmatch=include</option><option value="exclude">onmatch=exclude</option></select>
-          <span class="text-muted small" x-text="ev.rules.length + ' regler · ' + ev.conditions.length + ' løse betingelser'"></span>
+          <span class="text-muted small" x-text="ev.rules.length + ' rules · ' + ev.conditions.length + ' bare conditions'"></span>
           <div class="ms-auto d-flex gap-1">
             <button class="btn btn-sm btn-outline-primary" @click="ev.rules.push(newRule()); dirty=true">+ Rule</button>
-            <button class="btn btn-sm btn-outline-secondary" @click="ev.conditions.push(newCond(ev)); dirty=true">+ løs betingelse</button>
-            <button class="btn btn-sm btn-outline-danger" @click="if(confirm('Fjern event-blok?')) { rg.events.splice(ei,1); dirty=true }">✕</button>
+            <button class="btn btn-sm btn-outline-secondary" @click="ev.conditions.push(newCond(ev)); dirty=true">+ bare condition</button>
+            <button class="btn btn-sm btn-outline-danger" @click="if(confirm('Remove this event block?')) { rg.events.splice(ei,1); dirty=true }">✕</button>
           </div>
         </div>
 
         <template x-if="ev.conditions.length">
           <div class="vsm-rule vsm-rule--bare">
-            <div class="small text-muted mb-1">Løse betingelser (direkte under eventet – matches hver for sig)</div>
+            <div class="small text-muted mb-1">Bare conditions (directly under the event – each matched on its own)</div>
             <template x-for="(c, ci) in ev.conditions" :key="ci">
               <div class="vsm-cond">
                 <select class="form-select form-select-sm" x-model="c.field" x-effect="$nextTick(() => $el.value = c.field)" @change="dirty=true"><template x-for="f in fieldsFor(ev)" :key="f"><option :value="f" x-text="f"></option></template></select>
                 <select class="form-select form-select-sm" x-model="c.condition" x-effect="$nextTick(() => $el.value = c.condition)" @change="dirty=true"><template x-for="op in schema.conditions" :key="op"><option :value="op" x-text="op"></option></template></select>
-                <input class="form-control form-control-sm font-monospace" x-model="c.value" @input="dirty=true" :placeholder="isMulti(c) ? 'værdi1;værdi2' : 'værdi'">
-                <input class="form-control form-control-sm" x-model="c.name" @input="dirty=true" placeholder="name (valgfri)">
+                <input class="form-control form-control-sm font-monospace" x-model="c.value" @input="dirty=true" :placeholder="isMulti(c) ? 'value1;value2' : 'value'">
+                <input class="form-control form-control-sm" x-model="c.name" @input="dirty=true" placeholder="name (optional)">
                 <button class="btn btn-sm btn-outline-danger" @click="ev.conditions.splice(ci,1); dirty=true">✕</button>
               </div>
             </template>
@@ -70,37 +70,37 @@
               <span class="kc-tag">Rule</span>
               <input class="form-control form-control-sm flex-grow-1" x-model="r.name" @input="dirty=true" placeholder="technique_id=T1234,technique_name=…">
               <select class="form-select form-select-sm w-auto" x-model="r.group_relation" @change="dirty=true"><option value="and">and</option><option value="or">or</option></select>
-              <button class="btn btn-sm btn-outline-secondary" @click="r.conditions.push(newCond(ev)); dirty=true">+ betingelse</button>
-              <button class="btn btn-sm btn-outline-secondary" @click="ev.rules.splice(ri+1,0,JSON.parse(JSON.stringify(r))); dirty=true" title="Duplikér regel">⧉</button>
+              <button class="btn btn-sm btn-outline-secondary" @click="r.conditions.push(newCond(ev)); dirty=true">+ condition</button>
+              <button class="btn btn-sm btn-outline-secondary" @click="ev.rules.splice(ri+1,0,JSON.parse(JSON.stringify(r))); dirty=true" title="Duplicate rule">⧉</button>
               <button class="btn btn-sm btn-outline-danger" @click="ev.rules.splice(ri,1); dirty=true">✕</button>
             </div>
             <template x-for="(c, ci) in r.conditions" :key="ci">
               <div class="vsm-cond">
                 <select class="form-select form-select-sm" x-model="c.field" x-effect="$nextTick(() => $el.value = c.field)" @change="dirty=true"><template x-for="f in fieldsFor(ev)" :key="f"><option :value="f" x-text="f"></option></template></select>
                 <select class="form-select form-select-sm" x-model="c.condition" x-effect="$nextTick(() => $el.value = c.condition)" @change="dirty=true"><template x-for="op in schema.conditions" :key="op"><option :value="op" x-text="op"></option></template></select>
-                <input class="form-control form-control-sm font-monospace" x-model="c.value" @input="dirty=true" :placeholder="isMulti(c) ? 'værdi1;værdi2' : 'værdi'">
-                <input class="form-control form-control-sm" x-model="c.name" @input="dirty=true" placeholder="name (valgfri)">
+                <input class="form-control form-control-sm font-monospace" x-model="c.value" @input="dirty=true" :placeholder="isMulti(c) ? 'value1;value2' : 'value'">
+                <input class="form-control form-control-sm" x-model="c.name" @input="dirty=true" placeholder="name (optional)">
                 <button class="btn btn-sm btn-outline-danger" @click="r.conditions.splice(ci,1); dirty=true">✕</button>
               </div>
             </template>
-            <div class="text-muted small" x-show="!r.conditions.length">Ingen betingelser – reglen matcher intet. Tilføj mindst én.</div>
+            <div class="text-muted small" x-show="!r.conditions.length">No conditions – this rule matches nothing. Add at least one.</div>
           </div>
         </template>
       </div>
     </template>
-    <div class="text-muted small p-3" x-show="!rg.events.length">Ingen events i denne RuleGroup.</div>
+    <div class="text-muted small p-3" x-show="!rg.events.length">No events in this RuleGroup.</div>
   </section>
 </template>
 
 <div class="d-flex gap-2 align-items-center mb-3">
-  <button class="btn btn-primary px-3" @click="save(false)" :disabled="saving">Gem</button>
-  <button class="btn btn-outline-warning" x-show="hasErrors" x-cloak @click="save(true)">Gem alligevel (ignorér fejl)</button>
-  <span class="text-muted small" x-show="saving">Validerer med sysmon-modular…</span>
+  <button class="btn btn-primary px-3" @click="save(false)" :disabled="saving">Save</button>
+  <button class="btn btn-outline-warning" x-show="hasErrors" x-cloak @click="save(true)">Save anyway (ignore errors)</button>
+  <span class="text-muted small" x-show="saving">Validating with sysmon-modular…</span>
   <span class="text-success small" x-show="status" x-text="status" x-cloak></span>
 </div>
 
 <div x-show="findings !== null" x-cloak class="mb-4">
-  <template x-if="findings && !findings.length"><div class="kc-callout kc-callout--success"><span class="kc-callout-icon">✓</span><div><p class="kc-callout-body mb-0">Ingen fund – modulet er gyldigt.</p></div></div></template>
+  <template x-if="findings && !findings.length"><div class="kc-callout kc-callout--success"><span class="kc-callout-icon">✓</span><div><p class="kc-callout-body mb-0">No findings – the module is valid.</p></div></div></template>
   <template x-for="(f, i) in (findings || [])" :key="i">
     <div class="kc-callout kc-callout--compact" :class="{'kc-callout--danger': f.severity==='error', 'kc-callout--warning': f.severity==='warning' || f.severity==='performance'}">
       <span class="kc-callout-icon" x-text="f.severity==='error' ? '✖' : (f.severity==='warning' ? '⚠' : '💡')"></span>
@@ -113,7 +113,7 @@
 </div>
 
 <details class="mb-4" x-show="xmlPreview" x-cloak>
-  <summary class="small text-muted">Vis genereret XML</summary>
+  <summary class="small text-muted">Show generated XML</summary>
   <pre class="kc-code mt-2 vsm-pre" x-text="xmlPreview"></pre>
 </details>
 </div>
@@ -141,7 +141,7 @@ function moduleEditor() {
         if (!r.ok) { this.findings = [{ code: 'APP', message: data.error || r.statusText, severity: 'error', location: '', details: [] }]; this.hasErrors = true; return; }
         this.findings = data.findings || [];
         this.hasErrors = this.findings.some(f => f.severity === 'error');
-        if (data.saved) { this.dirty = false; this.status = 'Gemt til overlay.'; this.xmlPreview = data.xml || ''; }
+        if (data.saved) { this.dirty = false; this.status = 'Saved to overlay.'; this.xmlPreview = data.xml || ''; }
         else { this.status = ''; }
       } catch (e) { this.findings = [{ code: 'APP', message: String(e), severity: 'error', location: '', details: [] }]; this.hasErrors = true; }
       finally { this.saving = false; }

@@ -4,9 +4,9 @@
     <div class="flex-grow-1 min-w-0">
       <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
         <span class="kc-severity {% if m.kind == 'exclude' %}kc-severity-medium{% else %}kc-severity-info{% endif %}">{{ m.kind }}</span>
-        {% if m.source == 'edited' %}<span class="kc-tag kc-tag-green">redigeret</span>{% endif %}
-        {% if m.source == 'custom' %}<span class="kc-tag kc-tag-navy">eget modul</span>{% endif %}
-        {% if m.error %}<span class="kc-tag kc-tag-red" title="{{ m.error }}">ugyldig XML</span>{% endif %}
+        {% if m.source == 'edited' %}<span class="kc-tag kc-tag-green">edited</span>{% endif %}
+        {% if m.source == 'custom' %}<span class="kc-tag kc-tag-navy">custom</span>{% endif %}
+        {% if m.error %}<span class="kc-tag kc-tag-red" title="{{ m.error }}">invalid XML</span>{% endif %}
         <code class="vsm-filename">{{ m.filename }}</code>
       </div>
       <div class="vsm-card-title">{{ m.title }}</div>
@@ -14,33 +14,33 @@
         {% for et in m.event_types %}<span class="kc-tag">{{ et }}</span>{% endfor %}
         {% for t in m.techniques[:6] %}<span class="kc-tag kc-tag-blue" title="{{ t[1] }}">{{ t[0] }}</span>{% endfor %}
         {% if m.techniques|length > 6 %}<span class="kc-tag">+{{ m.techniques|length - 6 }}</span>{% endif %}
-        <span class="kc-tag" title="Antal regler/betingelser">{{ m.rule_count }} regler</span>
+        <span class="kc-tag" title="Number of rules/conditions">{{ m.rule_count }} rules</span>
       </div>
     </div>
     <div class="d-flex flex-column align-items-end gap-2">
       <div class="form-check form-switch m-0">
         <input class="form-check-input vsm-switch" type="checkbox" role="switch" {% if on %}checked{% endif %}
                hx-post="/p/{{ profile.slug }}/toggle" hx-vals='{"rel": "{{ m.rel }}"}' name="on" value="true"
-               hx-target="closest .vsm-card" hx-swap="outerHTML" title="Medtag i build">
+               hx-target="closest .vsm-card" hx-swap="outerHTML" title="Include in build">
       </div>
       <div class="btn-group btn-group-sm">
-        <a class="btn btn-outline-primary" href="/p/{{ profile.slug }}/m/{{ m.rel }}/edit">Rediger</a>
+        <a class="btn btn-outline-primary" href="/p/{{ profile.slug }}/m/{{ m.rel }}/edit">Edit</a>
         <a class="btn btn-outline-secondary" href="/p/{{ profile.slug }}/m/{{ m.rel }}/raw">XML</a>
         <button class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"></button>
         <ul class="dropdown-menu dropdown-menu-end">
           <li>
             <form method="post" action="/p/{{ profile.slug }}/m/{{ m.rel }}/duplicate" class="px-3 py-2 d-flex gap-1"
                   onsubmit="return this.name.value.trim().length > 0">
-              <input class="form-control form-control-sm" name="name" placeholder="Nyt navn…" required>
-              <button class="btn btn-sm btn-primary">Duplikér</button>
+              <input class="form-control form-control-sm" name="name" placeholder="New name…" required>
+              <button class="btn btn-sm btn-primary">Duplicate</button>
             </form>
           </li>
           {% if m.source != 'upstream' %}
           <li><hr class="dropdown-divider"></li>
           <li>
             <form method="post" action="/p/{{ profile.slug }}/m/{{ m.rel }}/revert"
-                  onsubmit="return confirm('{% if m.source == 'custom' %}Slet dit eget modul {{ m.filename }}?{% else %}Nulstil {{ m.filename }} til upstream-versionen?{% endif %}')">
-              <button class="dropdown-item text-danger">{% if m.source == 'custom' %}Slet modul{% else %}Nulstil til upstream{% endif %}</button>
+                  onsubmit="return confirm('{% if m.source == 'custom' %}Delete your custom module {{ m.filename }}?{% else %}Reset {{ m.filename }} to the upstream version?{% endif %}')">
+              <button class="dropdown-item text-danger">{% if m.source == 'custom' %}Delete module{% else %}Reset to upstream{% endif %}</button>
             </form>
           </li>
           {% endif %}

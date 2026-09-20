@@ -1,5 +1,5 @@
-/* Visual Sysmon Modular – projekt-specifikke tilpasninger.
-   Indlæses EFTER kommunecert-theme.css og bruger kun dets tokens. */
+/* Visual Sysmon Modular – project-specific styles.
+   Loaded AFTER kommunecert-theme.css and only uses its tokens. */
 
 [x-cloak] { display: none !important; }
 
@@ -69,3 +69,4 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
   .vsm-sidebar { position: static; max-height: none; }
   .vsm-cond { grid-template-columns: 1fr 1fr; }
 }
+.vsm-narrow { max-width: 640px; }

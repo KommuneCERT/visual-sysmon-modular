@@ -5,25 +5,25 @@
   <div>
     <span class="kc-section-tag"><a href="/p/{{ profile.slug }}/builds">Builds</a> · {{ build.profile_name }}</span>
     <h1 class="kc-section-title mb-0">Build {{ build.id|replace('T',' ') }}
-      {% if build.ok %}<span class="kc-severity kc-severity-low align-middle">OK</span>{% else %}<span class="kc-severity kc-severity-high align-middle">FEJLET · exit {{ build.exit_code }}</span>{% endif %}</h1>
-    <div class="text-muted small">Sysmon {{ build.sysmon_version }} · schema {{ build.schemaversion }} · {{ build.module_count }} moduler · {{ (build.output_size/1024)|round(1) }} KB</div>
+      {% if build.ok %}<span class="kc-severity kc-severity-low align-middle">OK</span>{% else %}<span class="kc-severity kc-severity-high align-middle">FAILED · exit {{ build.exit_code }}</span>{% endif %}</h1>
+    <div class="text-muted small">Sysmon {{ build.sysmon_version }} · schema {{ build.schemaversion }} · {{ build.module_count }} modules · {{ (build.output_size/1024)|round(1) }} KB</div>
   </div>
   <div class="d-flex gap-2">
     {% if build.ok %}<a class="btn btn-primary" href="/p/{{ profile.slug }}/builds/{{ build.id }}/sysmonconfig.xml">⬇ Download sysmonconfig.xml</a>{% endif %}
     <a class="btn btn-outline-secondary" href="/p/{{ profile.slug }}/builds/{{ build.id }}/include_rules.txt">include_rules.txt</a>
-    <form method="post" action="/p/{{ profile.slug }}/build" class="m-0"><button class="btn btn-outline-primary">▶ Byg igen</button></form>
+    <form method="post" action="/p/{{ profile.slug }}/build" class="m-0"><button class="btn btn-outline-primary">▶ Build again</button></form>
   </div>
 </div>
 
 <section class="row g-3 mb-4">
-  <div class="col-6 col-xl-3"><div class="kc-stat-card {% if build.summary.error %}kc-stat-card--danger{% endif %}"><span class="kc-stat-num">{{ build.summary.error }}</span><span class="kc-stat-label">Fejl</span></div></div>
-  <div class="col-6 col-xl-3"><div class="kc-stat-card {% if build.summary.warning %}kc-stat-card--warning{% endif %}"><span class="kc-stat-num">{{ build.summary.warning }}</span><span class="kc-stat-label">Advarsler</span></div></div>
-  <div class="col-6 col-xl-3"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num">{{ build.summary.performance }}</span><span class="kc-stat-label">Performance-fund</span></div></div>
-  <div class="col-6 col-xl-3"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num">{{ build.summary.recommendation }}</span><span class="kc-stat-label">Anbefalinger</span></div></div>
+  <div class="col-6 col-xl-3"><div class="kc-stat-card {% if build.summary.error %}kc-stat-card--danger{% endif %}"><span class="kc-stat-num">{{ build.summary.error }}</span><span class="kc-stat-label">Errors</span></div></div>
+  <div class="col-6 col-xl-3"><div class="kc-stat-card {% if build.summary.warning %}kc-stat-card--warning{% endif %}"><span class="kc-stat-num">{{ build.summary.warning }}</span><span class="kc-stat-label">Warnings</span></div></div>
+  <div class="col-6 col-xl-3"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num">{{ build.summary.performance }}</span><span class="kc-stat-label">Performance findings</span></div></div>
+  <div class="col-6 col-xl-3"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num">{{ build.summary.recommendation }}</span><span class="kc-stat-label">Recommendations</span></div></div>
 </section>
 
 <ul class="nav nav-tabs mb-3" role="tablist">
-  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-findings">Fund ({{ build.findings|length }})</button></li>
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-findings">Findings ({{ build.findings|length }})</button></li>
   {% if coverage %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-coverage">Coverage</button></li>{% endif %}
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-diff">Diff</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-log">Log</button></li>
@@ -31,10 +31,10 @@
 
 <div class="tab-content">
   <div class="tab-pane fade show active" id="tab-findings">
-    {% if not build.findings %}<div class="kc-callout kc-callout--success"><span class="kc-callout-icon">✓</span><div><p class="kc-callout-body mb-0">Ingen fund. Konfigurationen validerer rent.</p></div></div>{% endif %}
+    {% if not build.findings %}<div class="kc-callout kc-callout--success"><span class="kc-callout-icon">✓</span><div><p class="kc-callout-body mb-0">No findings. The configuration validates cleanly.</p></div></div>{% endif %}
     {% for sev in ['error', 'warning', 'performance', 'recommendation', 'info'] %}{% if grouped[sev] %}
     <details class="mb-3" {% if sev in ('error','warning') %}open{% endif %}>
-      <summary class="fw-bold">{{ {'error':'Fejl','warning':'Advarsler','performance':'Performance','recommendation':'Anbefalinger','info':'Info'}[sev] }} ({{ grouped[sev]|length }})</summary>
+      <summary class="fw-bold">{{ {'error':'Errors','warning':'Warnings','performance':'Performance','recommendation':'Recommendations','info':'Info'}[sev] }} ({{ grouped[sev]|length }})</summary>
       <div class="mt-2">{% with findings=grouped[sev], compact=True %}{% include "_findings.html" %}{% endwith %}</div>
     </details>
     {% endif %}{% endfor %}
@@ -43,22 +43,22 @@
   {% if coverage %}
   <div class="tab-pane fade" id="tab-coverage">
     <div class="row g-3 mb-3">
-      <div class="col-6 col-md-3"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num">{{ coverage.include }}</span><span class="kc-stat-label">include-betingelser</span></div></div>
-      <div class="col-6 col-md-3"><div class="kc-stat-card kc-stat-card--warning"><span class="kc-stat-num">{{ coverage.exclude }}</span><span class="kc-stat-label">exclude-betingelser</span></div></div>
-      <div class="col-6 col-md-3"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num">{{ coverage.techniques|length }}</span><span class="kc-stat-label">ATT&amp;CK-teknikker</span></div></div>
-      <div class="col-6 col-md-3"><div class="kc-stat-card"><span class="kc-stat-num">{{ coverage.events|length }}</span><span class="kc-stat-label">Event-typer</span></div></div>
+      <div class="col-6 col-md-3"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num">{{ coverage.include }}</span><span class="kc-stat-label">include conditions</span></div></div>
+      <div class="col-6 col-md-3"><div class="kc-stat-card kc-stat-card--warning"><span class="kc-stat-num">{{ coverage.exclude }}</span><span class="kc-stat-label">exclude conditions</span></div></div>
+      <div class="col-6 col-md-3"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num">{{ coverage.techniques|length }}</span><span class="kc-stat-label">ATT&amp;CK techniques</span></div></div>
+      <div class="col-6 col-md-3"><div class="kc-stat-card"><span class="kc-stat-num">{{ coverage.events|length }}</span><span class="kc-stat-label">Event types</span></div></div>
     </div>
     <div class="row g-4">
       <div class="col-lg-5">
-        <h3 class="h6">Pr. event</h3>
-        <div class="table-responsive"><table class="table table-sm kc-table"><thead><tr><th>Event</th><th>include</th><th>exclude</th><th>moduler</th></tr></thead>
+        <h3 class="h6">Per event</h3>
+        <div class="table-responsive"><table class="table table-sm kc-table"><thead><tr><th>Event</th><th>include</th><th>exclude</th><th>modules</th></tr></thead>
         <tbody>{% for e in coverage.events %}<tr><td>{{ e.name }}</td><td>{{ e.include }}</td><td>{{ e.exclude }}</td><td>{{ e.modules|length }}</td></tr>{% endfor %}</tbody></table></div>
-        <h3 class="h6 mt-3">Pr. taktik</h3>
+        <h3 class="h6 mt-3">Per tactic</h3>
         <div class="d-flex flex-wrap gap-1">{% for t, n in coverage.tactics.items() %}<span class="kc-tag kc-tag-blue">{{ t }} · {{ n }}</span>{% endfor %}</div>
       </div>
       <div class="col-lg-7">
-        <h3 class="h6">Teknikker</h3>
-        <div class="table-responsive vsm-scroll"><table class="table table-sm kc-table"><thead><tr><th>ID</th><th>Navn</th><th>Taktik</th><th>#</th></tr></thead>
+        <h3 class="h6">Techniques</h3>
+        <div class="table-responsive vsm-scroll"><table class="table table-sm kc-table"><thead><tr><th>ID</th><th>Name</th><th>Tactics</th><th>#</th></tr></thead>
         <tbody>{% for t in coverage.techniques %}<tr><td><code>{{ t.id }}</code></td><td>{{ t.name }}</td><td class="small">{{ t.tactics|join(', ') }}</td><td>{{ t.count }}</td></tr>{% endfor %}</tbody></table></div>
       </div>
     </div>
@@ -67,15 +67,15 @@
 
   <div class="tab-pane fade" id="tab-diff">
     <form class="d-flex gap-2 align-items-center mb-3" hx-get="/p/{{ profile.slug }}/builds/{{ build.id }}/diff" hx-target="#diff-result" hx-trigger="submit, change">
-      <label class="small text-muted">Sammenlign med build:</label>
+      <label class="small text-muted">Compare with build:</label>
       <select class="form-select form-select-sm w-auto" name="before">
         {% for b in other_builds %}<option value="{{ b.id }}" {% if b.id == build.diff_before %}selected{% endif %}>{{ b.id|replace('T',' ') }}</option>{% endfor %}
       </select>
-      <button class="btn btn-sm btn-outline-primary" {% if not other_builds %}disabled{% endif %}>Vis diff</button>
+      <button class="btn btn-sm btn-outline-primary" {% if not other_builds %}disabled{% endif %}>Show diff</button>
     </form>
     <div id="diff-result">
       {% if diff %}{% with before_id=build.diff_before, after_id=build.id, error='' %}{% include "_diff.html" %}{% endwith %}
-      {% elif not other_builds %}<p class="text-muted">Ingen tidligere OK-build at sammenligne med.</p>{% endif %}
+      {% elif not other_builds %}<p class="text-muted">No earlier successful build to compare with.</p>{% endif %}
     </div>
   </div>
 

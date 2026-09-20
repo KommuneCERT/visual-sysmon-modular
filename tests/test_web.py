@@ -3,7 +3,7 @@ from app import overlay, profiles
 
 def test_pages_render(client):
     r = client.get("/", follow_redirects=True)
-    assert r.status_code == 200 and "Profil" in r.text
+    assert r.status_code == 200 and "Profile" in r.text
     slug = profiles.list_profiles()[0].slug
     r = client.get(f"/p/{slug}/c/1_process_creation")
     assert r.status_code == 200 and "include_clear_windows_event_logs.xml" in r.text
@@ -48,6 +48,6 @@ def test_structured_save_and_raw_validation(client):
     assert r.json()["saved"] is False and any(f["code"] == "SYS202" for f in r.json()["findings"])
 
     r = client.post(f"/p/{slug}/m/{rel}/raw", data={"xml": "<Sysmon><broken"})
-    assert r.status_code == 200 and "Ikke gemt" in r.text
+    assert r.status_code == 200 and "Not saved" in r.text
     r = client.post(f"/p/{slug}/m/{rel}/revert", follow_redirects=False)
     assert r.status_code == 303 and not overlay.exists(rel)
