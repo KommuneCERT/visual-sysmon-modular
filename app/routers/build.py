@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
 
 from .. import attack, builder
 from ._common import get_profile, render, sidebar_ctx
@@ -47,6 +47,17 @@ def diff_view(request: Request, slug: str, build_id: str, before: str):
         raise HTTPException(404)
     diff, err = builder.diff_builds(slug, before, build_id)
     return render(request, "_diff.html", diff=diff, error=err, before_id=before, after_id=build_id)
+
+
+@router.get("/p/{slug}/builds/{build_id}/xml")
+def build_xml_view(request: Request, slug: str, build_id: str):
+    get_profile(slug)
+    if builder.load_build(slug, build_id) is None:
+        raise HTTPException(404)
+    p = builder.build_path(slug, build_id, "sysmonconfig.xml")
+    if not p.exists():
+        raise HTTPException(404)
+    return render(request, "_xml_view.html", xml=p.read_text(), auto=True)
 
 
 @router.get("/p/{slug}/builds/{build_id}/{name}")

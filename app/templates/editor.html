@@ -115,7 +115,7 @@
 
 <details class="mb-4" x-show="xmlPreview" x-cloak>
   <summary class="small text-muted">Show generated XML</summary>
-  <pre class="kc-code mt-2 vsm-pre" x-text="xmlPreview"></pre>
+  <pre class="vsm-xml-view mt-2" data-hl="1" x-html="vsmXml.highlight(xmlPreview)"></pre>
 </details>
 </div>
 {% endblock %}

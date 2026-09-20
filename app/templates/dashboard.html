@@ -2,14 +2,6 @@
 {% from "_macros.html" import help %}
 {% block title %}{{ profile.name }} · {{ app_title }}{% endblock %}
 {% block content %}
-<div class="kc-callout vsm-intro mb-4" x-data="{ open: true }" x-init="try { open = !localStorage.getItem('vsm-intro-dismissed') } catch (e) {}" x-show="open" x-cloak>
-  <span class="kc-callout-icon">💡</span>
-  <div>
-    <div class="kc-callout-title">Pick modules → edit rules → Build → download sysmonconfig.xml</div>
-    <p class="kc-callout-body mb-0">Each category in the sidebar is a Sysmon event ID with upstream's include (detection) and exclude (noise) modules. Switch them on or off for this profile, tune a rule where needed, then press <strong>Build</strong>. Upstream files are never modified – your changes live in an overlay. The <a href="/p/{{ profile.slug }}/help">Help</a> page explains the tool and how Sysmon's include/exclude filtering works.</p>
-  </div>
-  <button type="button" class="btn-close" aria-label="Dismiss" @click="open = false; try { localStorage.setItem('vsm-intro-dismissed', '1') } catch (e) {}"></button>
-</div>
 <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
   <div>
     <span class="kc-section-tag">Profile {{ help("A profile is one selection of modules plus its build settings. Use one per fleet, e.g. <code>servers</code> and <code>workstations</code>. Profiles are independent, but edited/custom modules (the overlay) are shared by all of them.") }}</span>

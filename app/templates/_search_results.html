@@ -1,0 +1,42 @@
+{% if result is none %}
+<div class="text-muted small px-1">
+  Type to search {{ profile.modules|length }} selected modules – or pick a filter to browse.
+  <span class="ms-2">Try: <a href="?q=lsass" hx-boost="false">lsass</a> · <a href="?q=T1059">T1059</a> · <a href="?q=onmatch%3Dexclude">exclude</a> · <a href="?q=DestinationPort">DestinationPort</a></span>
+</div>
+{% else %}
+<div class="d-flex align-items-center gap-2 flex-wrap mb-2 px-1">
+  <span class="kc-tag kc-tag-blue">{{ result.total }} hits</span>
+  <span class="kc-tag">{{ result.modules_hit }} of {{ result.modules_scanned }} modules</span>
+  {% if result.truncated %}<span class="kc-tag kc-tag-amber">showing first {{ result.hits|length }} – refine the search</span>{% endif %}
+</div>
+{% if not result.hits %}<p class="text-muted px-1">No matches.</p>{% endif %}
+
+{% set mark = result.terms|join(' ') %}
+{% for hit in result.hits %}
+{% set new_module = loop.first or hit.rel != result.hits[loop.index0 - 1].rel %}
+{% if new_module %}
+<div class="vsm-hit-module">
+  <span class="kc-severity {% if hit.kind == 'exclude' %}kc-severity-medium{% else %}kc-severity-info{% endif %}">{{ hit.kind }}</span>
+  <a href="/p/{{ profile.slug }}/m/{{ hit.rel }}/edit" class="vsm-hit-path"><code>{{ hit.rel }}</code></a>
+  {% if hit.source == 'edited' %}<span class="kc-tag kc-tag-green">edited</span>{% elif hit.source == 'custom' %}<span class="kc-tag kc-tag-navy">custom</span>{% endif %}
+  {% if not hit.selected %}<span class="kc-tag kc-tag-red" title="Not selected in this profile – not part of the build">not selected</span>{% endif %}
+  <a class="btn btn-sm btn-outline-secondary ms-auto py-0" href="/p/{{ profile.slug }}/m/{{ hit.rel }}/raw">XML</a>
+</div>
+{% endif %}
+{% set prev = result.hits[loop.index0 - 1] if not loop.first else none %}
+{% set new_ctx = new_module or (prev.group_name, prev.event_type, prev.onmatch) != (hit.group_name, hit.event_type, hit.onmatch) %}
+<div class="vsm-hit {% if not new_ctx %}vsm-hit--cont{% endif %}">
+  {% if hit.block == 'module' %}
+  <div class="vsm-hit-ctx text-muted">whole module – matched on path / group names{% for t in hit.techniques %}<a class="kc-tag kc-tag-blue ms-2" href="https://attack.mitre.org/techniques/{{ t[0]|replace('.', '/') }}/" target="_blank" rel="noopener" title="{{ t[1] }}">{{ t[0] }}</a>{% endfor %}</div>
+  {% elif new_ctx %}
+  <div class="vsm-hit-ctx">
+    <span class="x-t">&lt;RuleGroup</span> <span class="x-a">name</span>=<span class="x-s">"{{ hit.group_name }}"</span> <span class="x-a">groupRelation</span>=<span class="x-s">"{{ hit.group_relation }}"</span><span class="x-t">&gt;</span>
+    <span class="vsm-hit-sep">›</span>
+    <span class="x-t">&lt;{{ hit.event_type }}</span> <span class="x-a">onmatch</span>=<span class="x-s">"{{ hit.onmatch }}"</span><span class="x-t">&gt;</span>
+  </div>
+  {% endif %}
+  {% if hit.block != 'module' and hit.techniques %}<div class="vsm-hit-tech">{% for t in hit.techniques %}<a class="kc-tag kc-tag-blue" href="https://attack.mitre.org/techniques/{{ t[0]|replace('.', '/') }}/" target="_blank" rel="noopener" title="{{ t[1] }}">{{ t[0] }}</a> <span class="text-muted small">{{ t[1] }}</span>{% endfor %}</div>{% endif %}
+  <pre class="vsm-xml-view {% if hit.block == 'module' %}vsm-hit-module-xml{% else %}vsm-xml-view--auto vsm-hit-xml{% endif %}" data-mark="{{ mark }}">{{ hit.xml }}</pre>
+</div>
+{% endfor %}
+{% endif %}

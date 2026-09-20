@@ -3,7 +3,8 @@ from app import overlay, profiles
 
 def test_pages_render(client):
     r = client.get("/", follow_redirects=True)
-    assert r.status_code == 200 and "Profile" in r.text
+    assert r.status_code == 200 and "Search" in r.text
+    assert client.get(f"/p/{profiles.list_profiles()[0].slug}/profile").status_code == 200
     slug = profiles.list_profiles()[0].slug
     r = client.get(f"/p/{slug}/c/1_process_creation")
     assert r.status_code == 200 and "include_clear_windows_event_logs.xml" in r.text

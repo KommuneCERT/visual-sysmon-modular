@@ -28,6 +28,7 @@
   <p>This GUI wraps <a href="https://github.com/olafhartong/sysmon-modular" target="_blank" rel="noopener">sysmon-modular</a>: a library of small XML <em>modules</em>, one per detection idea or noise exclusion, organised in directories per Sysmon event ID. Upstream is normally used by editing text lists and running a CLI. Here you do the same thing with switches and forms, and the exact same CLI does the merge.</p>
   <ol class="vsm-steps">
     <li><strong>Pick a profile</strong> (top right). A profile is one selection of modules plus build settings – e.g. <code>servers</code> and <code>workstations</code>.</li>
+    <li><strong>Search</strong> (the start page) to look through the current configuration: free text, ATT&amp;CK IDs, field names or values, filtered by include/exclude and category. Every hit is the matching <code>&lt;Rule&gt;</code> or condition in context, one click from the editor.</li>
     <li><strong>Walk the categories</strong> in the sidebar. Each one is a Sysmon event ID. Toggle modules on or off; the badge shows selected/total.</li>
     <li><strong>Edit a module</strong> when a rule needs tuning: <em>Edit</em> opens the rule editor, <em>XML</em> the raw text. Both validate with the upstream CLI before saving. Upstream files are never changed – your version is stored as an <em>overlay</em>.</li>
     <li><strong>Create your own modules</strong> for environment-specific exclusions (<em>+ New module</em> in a category).</li>
@@ -50,7 +51,7 @@
 <section id="sysmon" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Sysmon configuration basics</h2>
   <p>A Sysmon configuration is an XML document. The root carries a <code>schemaversion</code> (the <em>configuration</em> schema, not the binary version); options such as <code>HashAlgorithms</code> sit directly under the root, and all filtering lives under <code>&lt;EventFiltering&gt;</code>.</p>
-<pre class="kc-code vsm-pre">&lt;Sysmon schemaversion="4.90"&gt;
+<pre class="vsm-xml-view vsm-xml-view--auto">&lt;Sysmon schemaversion="4.90"&gt;
   &lt;HashAlgorithms&gt;*&lt;/HashAlgorithms&gt;
   &lt;EventFiltering&gt;
     &lt;RuleGroup name="..." groupRelation="or"&gt;

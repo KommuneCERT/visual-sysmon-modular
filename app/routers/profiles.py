@@ -3,13 +3,30 @@ from __future__ import annotations
 from fastapi import APIRouter, Form, Request, UploadFile
 from fastapi.responses import PlainTextResponse, RedirectResponse
 
-from .. import builder, catalog, config, overlay, profiles
+from .. import builder, catalog, config, overlay, profiles, search
 from ._common import get_profile, render, sidebar_ctx
 
 router = APIRouter()
 
 
 @router.get("/p/{slug}/")
+def search_page(request: Request, slug: str):
+    prof = get_profile(slug)
+    q = request.query_params.get("q", "").strip()
+    result = search.search(prof, q=q) if q else None   # server-render initial hits for ?q= links
+    return render(request, "search.html", **sidebar_ctx(prof), q=q, result=result)
+
+
+@router.get("/p/{slug}/search")
+def search_results(request: Request, slug: str, q: str = "", kind: str = "", category: str = "", scope: str = "selected"):
+    prof = get_profile(slug)
+    if not (q.strip() or kind or category):
+        return render(request, "_search_results.html", result=None, profile=prof)
+    result = search.search(prof, q=q, kind=kind, category=category, scope=scope)
+    return render(request, "_search_results.html", result=result, profile=prof)
+
+
+@router.get("/p/{slug}/profile")
 def dashboard(request: Request, slug: str):
     prof = get_profile(slug)
     ctx = sidebar_ctx(prof)
@@ -40,10 +57,10 @@ def create_profile(name: str = Form(...), mode: str = Form("all"), copy_from: st
         else:
             prof = profiles.create(name, select_all=(mode == "all"))
     except FileExistsError:
-        return RedirectResponse(f"/?msg=Profile+already+exists", status_code=303)
+        return RedirectResponse("/?msg=Profile+already+exists", status_code=303)
     except ValueError as exc:
         return RedirectResponse(f"/?msg={exc}", status_code=303)
-    return RedirectResponse(f"/p/{prof.slug}/", status_code=303)
+    return RedirectResponse(f"/p/{prof.slug}/profile", status_code=303)
 
 
 @router.post("/p/{slug}/settings")
@@ -66,7 +83,7 @@ def update_settings(
     prof.force_grouprelation_or = force_grouprelation_or
     prof.analyze = analyze
     profiles.save(prof)
-    return RedirectResponse(f"/p/{slug}/?msg=Settings+saved", status_code=303)
+    return RedirectResponse(f"/p/{slug}/profile?msg=Settings+saved", status_code=303)
 
 
 @router.post("/p/{slug}/delete")
@@ -86,7 +103,7 @@ def select_all(slug: str, mode: str = Form("all")):
     elif mode in ("include", "exclude"):
         prof.modules = [r for r in rels if r.split("/")[1].startswith(mode + "_")]
     profiles.save(prof)
-    return RedirectResponse(f"/p/{slug}/", status_code=303)
+    return RedirectResponse(f"/p/{slug}/profile", status_code=303)
 
 
 @router.post("/p/{slug}/import")
@@ -101,7 +118,7 @@ async def import_list(slug: str, file: UploadFile, mode: str = Form("replace")):
     else:
         prof.modules = rels
     profiles.save(prof)
-    return RedirectResponse(f"/p/{slug}/?msg={len(rels)}+modules+processed", status_code=303)
+    return RedirectResponse(f"/p/{slug}/profile?msg={len(rels)}+modules+processed", status_code=303)
 
 
 @router.get("/p/{slug}/include_rules.txt")

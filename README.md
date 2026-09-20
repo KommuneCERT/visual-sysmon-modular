@@ -29,13 +29,17 @@ The first start creates a **default** profile with every upstream module selecte
   builds/<profile>/<time>/   sysmonconfig.xml, include_rules.txt, build.log, coverage.json, diff.json
 ```
 
+- **Search** (start page) – free-text search across the selected modules (or all): module path, RuleGroup name,
+  event, rule name, fields, operators, values, ATT&CK IDs. Hits are shown as the matching `<Rule>`/condition
+  in context (module → RuleGroup → event) with syntax highlighting and match marking, updated as you type.
 - **Profiles** – several independent selections (e.g. `servers`, `workstations`), each with its own
   target Sysmon version (12–15).
 - **Categories** – the same directories as upstream (`1_process_creation`, `3_network_connection_initiated`, …).
   Every module can be toggled; "select all / includes / excludes" per category.
 - **Rule editor** – RuleGroup → event (include/exclude) → Rule (and/or) → conditions, with field and
   condition dropdowns from the Sysmon schema. Saving validates via `sysmon-modular validate`.
-- **Raw XML** – text editor with *Validate* (same CLI) and "save anyway".
+- **Raw XML** – syntax-highlighted editor with *Validate* (same CLI) and "save anyway". All XML views
+  (search hits, generated XML, build output) are highlighted by a small dependency-free script.
 - **Overlay** – upstream is never touched. Editing an upstream module stores a copy in `overlay/` that
   shadows the original at build time. *Reset to upstream* deletes the copy. Custom modules only live in the overlay.
 - **Build** – composes upstream + overlay into a temporary tree and runs

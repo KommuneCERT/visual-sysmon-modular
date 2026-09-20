@@ -10,6 +10,7 @@
   <script src="/static/vendor/htmx.min.js" defer></script>
   <script src="/static/vendor/alpine.min.js" defer></script>
   <script src="/static/vendor/bootstrap.bundle.min.js" defer></script>
+  <script src="/static/xmlhl.js"></script>
 </head>
 <body>
 <nav class="kc-navbar d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -34,10 +35,11 @@
         <li><a class="dropdown-item {% if p.slug == profile.slug %}active{% endif %}" href="/p/{{ p.slug }}/">{{ p.name }} <span class="text-muted small">· {{ p.modules|length }} modules · v{{ p.sysmon_version }}</span></a></li>
         {% endfor %}
         <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="/p/{{ profile.slug }}/#new-profile">+ New profile</a></li>
+        <li><a class="dropdown-item" href="/p/{{ profile.slug }}/profile#new-profile">+ New profile</a></li>
       </ul>
     </div>
-    <a href="/p/{{ profile.slug }}/" class="kc-nav-link {% if request.url.path == '/p/' ~ profile.slug ~ '/' %}active{% endif %}">Overview</a>
+    <a href="/p/{{ profile.slug }}/" class="kc-nav-link {% if request.url.path == '/p/' ~ profile.slug ~ '/' %}active{% endif %}" title="Search the current configuration">Search</a>
+    <a href="/p/{{ profile.slug }}/profile" class="kc-nav-link {% if request.url.path.endswith('/profile') %}active{% endif %}" title="Profile settings, bulk selection, import/export">Profile</a>
     <a href="/p/{{ profile.slug }}/builds" class="kc-nav-link {% if '/builds' in request.url.path %}active{% endif %}">Builds</a>
     <a href="/p/{{ profile.slug }}/coverage" class="kc-nav-link {% if '/coverage' in request.url.path %}active{% endif %}" title="ATT&amp;CK coverage of the selected modules">Coverage</a>
     <a href="/p/{{ profile.slug }}/help" class="kc-nav-link {% if request.url.path.endswith('/help') %}active{% endif %}" title="How the tool and Sysmon filtering work">Help</a>

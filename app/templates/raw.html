@@ -15,7 +15,7 @@
 </div>
 {% if parse_error %}<div class="kc-callout kc-callout--danger"><span class="kc-callout-icon">✖</span><div><div class="kc-callout-title">XML cannot be parsed</div><p class="kc-callout-body mb-0">{{ parse_error }}</p></div></div>{% endif %}
 <form method="post" action="/p/{{ profile.slug }}/m/{{ m.rel }}/raw" id="rawform">
-  <textarea class="form-control vsm-xml" name="xml" rows="28" spellcheck="false">{{ xml }}</textarea>
+  <textarea class="vsm-xml-editor" name="xml" spellcheck="false" autocomplete="off">{{ xml }}</textarea>
   <div class="d-flex gap-2 mt-3 align-items-center flex-wrap">
     <button class="btn btn-primary">Save</button>
     <button class="btn btn-outline-secondary" type="button"

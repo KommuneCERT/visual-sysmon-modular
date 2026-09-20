@@ -63,16 +63,25 @@ def _sort_key(dirname: str) -> tuple[int, str]:
     return (int(m.group(1).split("_")[0]) if m else 999, dirname)
 
 
+def parsed_module(rel: str):
+    """Parsed sysmon_xml.Module for a module path, cached on file mtime."""
+    path = overlay.resolve(rel)
+    mtime = path.stat().st_mtime
+    cached = _cache.get(str(path))
+    if cached and cached[0] == mtime:
+        return cached[1]
+    parsed = parse_file(path)
+    _cache[str(path)] = (mtime, parsed)
+    return parsed
+
+
 def _load_module(rel: str) -> Module:
     cat, fname = rel.split("/")
     path = overlay.resolve(rel)
     kind = "include" if fname.startswith("include_") else "exclude" if fname.startswith("exclude_") else "other"
     mod = Module(rel=rel, category=cat, filename=fname, kind=kind, source=overlay.source_of(rel), title=fname)
     try:
-        mtime = path.stat().st_mtime
-        cached = _cache.get(str(path))
-        parsed = cached[1] if cached and cached[0] == mtime else parse_file(path)
-        _cache[str(path)] = (mtime, parsed)
+        parsed = parsed_module(rel)
         mod.title = next((rg.name for rg in parsed.rulegroups if rg.name), "") or filename_title(fname)
         mod.event_types = parsed.event_types
         mod.techniques = parsed.techniques

@@ -205,6 +205,25 @@ def to_xml(mod: Module) -> str:
     return etree.tostring(root, encoding="unicode") + "\n"
 
 
+def _el_xml(el: etree._Element) -> str:
+    etree.indent(el, space="  ")
+    return etree.tostring(el, encoding="unicode")
+
+
+def rule_to_xml(rule: Rule) -> str:
+    r_el = etree.Element("Rule")
+    if rule.name:
+        r_el.set("name", rule.name)
+    r_el.set("groupRelation", rule.group_relation or "and")
+    for c in rule.conditions:
+        r_el.append(c.to_xml())
+    return _el_xml(r_el)
+
+
+def condition_to_xml(cond: Condition) -> str:
+    return _el_xml(cond.to_xml())
+
+
 def empty_module(event_type: str, onmatch: str, group_name: str, schemaversion: str = "4.90") -> Module:
     return Module(
         schemaversion=schemaversion,
