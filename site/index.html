@@ -66,7 +66,7 @@
     <div class="list-group list-group-flush vsm-catlist">
       <template x-for="row in $store.app.sidebar" :key="row.cat.dirname">
         <a :href="'#/c/' + row.cat.dirname" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" :class="{ active: row.cat.dirname === $store.app.route.cat }">
-          <span class="d-flex align-items-center gap-2 text-truncate"><span class="vsm-evid" x-text="row.cat.event_ids.join('/')"></span><span class="text-truncate" x-text="row.cat.label"></span><span class="vsm-vol-dot" x-show="$store.app.volumeOf(row.cat.dirname).level === 'high'" :title="'High volume: ' + $store.app.volumeOf(row.cat.dirname).why"></span></span>
+          <span class="d-flex align-items-center gap-2 text-truncate"><span class="vsm-evid" x-text="row.cat.event_ids.join('/')"></span><span class="text-truncate" x-text="row.cat.label"></span><template x-if="$store.app.volumeOf(row.cat.dirname).level === 'high'"><span class="vsm-vol-tag" x-pop="'<strong>High-volume event type.</strong> ' + $store.app.volumeOf(row.cat.dirname).why + ' Keep the include modules focused and the exclusions on.'" @click.stop.prevent>high</span></template></span>
           <span class="badge rounded-pill" :class="row.selected === 0 ? 'vsm-badge-none' : row.selected === row.total ? 'vsm-badge-all' : 'vsm-badge-some'" x-text="row.selected + '/' + row.total"></span>
         </a>
       </template>
@@ -250,7 +250,7 @@
               <div>
                 <span class="kc-section-tag">Event ID <span x-text="cat.event_ids.join(' / ')"></span> <button x-help="'Every module here filters this Sysmon event. <span class=\'kc-severity kc-severity-info\'>include</span> modules are detections – only matching events are logged. <span class=\'kc-severity kc-severity-medium\'>exclude</span> modules suppress known noise. <strong>Exclude always wins</strong> when both match, so keep exclusions narrow.'"></button></span>
                 <h1 class="kc-section-title mb-0" x-text="cat.label"></h1>
-                <div class="text-muted small"><code x-text="cat.dirname + '/'"></code> · <span class="kc-tag" :class="{ 'kc-tag-red': volume(cat.dirname).level === 'high', 'kc-tag-amber': volume(cat.dirname).level === 'medium' }" x-text="volume(cat.dirname).level + ' volume'" :title="volume(cat.dirname).why"></span> · <span x-text="cat.modules.filter(m => m.kind === 'include').length"></span> include · <span x-text="cat.modules.filter(m => m.kind === 'exclude').length"></span> exclude</div>
+                <div class="text-muted small"><code x-text="cat.dirname + '/'"></code> · <span class="kc-tag" :class="{ 'kc-tag-red': volume(cat.dirname).level === 'high', 'kc-tag-amber': volume(cat.dirname).level === 'medium' }" x-text="volume(cat.dirname).level + ' volume'" x-pop="'<strong>Expected event volume: ' + volume(cat.dirname).level + '.</strong> ' + volume(cat.dirname).why"></span> · <span x-text="cat.modules.filter(m => m.kind === 'include').length"></span> include · <span x-text="cat.modules.filter(m => m.kind === 'exclude').length"></span> exclude</div>
               </div>
               <div class="d-flex gap-2 flex-wrap">
                 <div class="btn-group btn-group-sm">

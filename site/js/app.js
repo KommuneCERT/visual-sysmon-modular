@@ -95,6 +95,11 @@ document.addEventListener("alpine:init", () => {
     if (!el.textContent.trim()) el.textContent = "?";
     new window.bootstrap.Popover(el, { content: evaluate(expression), html: true, trigger: "hover focus", placement: "top" });
   });
+  // <span x-pop="'text'"> – popover on hover/focus for any element (badges, dots)
+  A.directive("pop", (el, { expression }, { evaluate }) => {
+    el.setAttribute("tabindex", "0");
+    new window.bootstrap.Popover(el, { content: evaluate(expression), html: true, trigger: "hover focus", placement: "right" });
+  });
   // <button x-copy="text"> copies to the clipboard and flashes "Copied"
   A.directive("copy", (el, { expression }, { evaluateLater }) => {
     const get = evaluateLater(expression);
