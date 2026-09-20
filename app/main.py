@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import builder, catalog, config, profiles
-from .routers import build, modules, profiles as profiles_router
+from .routers import build, coverage, modules, profiles as profiles_router
 
 BASE = Path(__file__).parent
 templates = Jinja2Templates(directory=str(BASE / "templates"))
@@ -52,3 +52,4 @@ def healthz() -> dict:
 app.include_router(profiles_router.router)
 app.include_router(modules.router)
 app.include_router(build.router)
+app.include_router(coverage.router)

@@ -55,15 +55,14 @@
         <h3 class="h6">Per event</h3>
         <div class="table-responsive"><table class="table table-sm kc-table"><thead><tr><th>Event</th><th>include</th><th>exclude</th><th>modules</th></tr></thead>
         <tbody>{% for e in coverage.events %}<tr><td>{{ e.name }}</td><td>{{ e.include }}</td><td>{{ e.exclude }}</td><td>{{ e.modules|length }}</td></tr>{% endfor %}</tbody></table></div>
-        <h3 class="h6 mt-3">Per tactic</h3>
-        <div class="d-flex flex-wrap gap-1">{% for t, n in coverage.tactics.items() %}<span class="kc-tag kc-tag-blue">{{ t }} · {{ n }}</span>{% endfor %}</div>
       </div>
       <div class="col-lg-7">
-        <h3 class="h6">Techniques</h3>
-        <div class="table-responsive vsm-scroll"><table class="table table-sm kc-table"><thead><tr><th>ID</th><th>Name</th><th>Tactics</th><th>#</th></tr></thead>
-        <tbody>{% for t in coverage.techniques %}<tr><td><code>{{ t.id }}</code></td><td>{{ t.name }}</td><td class="small">{{ t.tactics|join(', ') }}</td><td>{{ t.count }}</td></tr>{% endfor %}</tbody></table></div>
+        <h3 class="h6">Per tactic</h3>
+        <div class="d-flex flex-wrap gap-1">{% for t, n in coverage.tactics.items() %}<span class="kc-tag kc-tag-blue">{{ t }} · {{ n }}</span>{% endfor %}</div>
       </div>
     </div>
+    <h3 class="h6 mt-4">ATT&amp;CK matrix of this build</h3>
+    {% include "_attack_matrix.html" %}
   </div>
   {% endif %}
 

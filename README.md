@@ -41,6 +41,9 @@ The first start creates a **default** profile with every upstream module selecte
 - **Build** – composes upstream + overlay into a temporary tree and runs
   `sysmon-modular merge --include-list … --sysmon-version … --analyze`. The result page shows findings
   (errors/warnings/performance/recommendations), ATT&CK coverage, a semantic diff against the previous build, and the log.
+- **ATT&CK coverage** – live tactic × technique matrix for the current selection (only rules tagged with
+  `technique_id=…` count), drill-down to the modules behind each technique, tagged-vs-untagged rule stats and
+  a Navigator layer download. The same matrix is shown for every build.
 - **Import/export** of include/exclude lists in upstream's text format, so existing setups can be reused.
 
 ## Updating upstream

@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 
-from .. import builder
+from .. import attack, builder
 from ._common import get_profile, render, sidebar_ctx
 
 router = APIRouter()
@@ -35,7 +35,7 @@ def show_build(request: Request, slug: str, build_id: str):
     log_path = builder.build_path(slug, build_id, "build.log")
     others = [b for b in builder.list_builds(slug) if b["id"] != build_id and b.get("ok")]
     return render(request, "build.html", **sidebar_ctx(prof), build=meta, grouped=grouped,
-                  coverage=coverage, diff=diff, log=log_path.read_text() if log_path.exists() else "",
+                  coverage=coverage, matrix=attack.build_matrix(coverage) if coverage else None, diff=diff, log=log_path.read_text() if log_path.exists() else "",
                   other_builds=others)
 
 

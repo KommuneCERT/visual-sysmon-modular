@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import help %}
+{% block title %}ATT&CK coverage · {{ profile.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+  <div>
+    <span class="kc-section-tag">Profile {{ profile.name }} · current selection</span>
+    <h1 class="kc-section-title mb-0">ATT&amp;CK coverage {{ help("Computed live from the <strong>currently selected</strong> modules (no build needed) with <code>sysmon-modular coverage</code>. Only rules that carry <code>technique_id=…</code> metadata count – a technique is 'covered' when at least one selected include rule is tagged with it. This is telemetry coverage (Sysmon will log matching activity), not detection quality.") }}</h1>
+    <div class="text-muted small">{{ selected_total }} modules selected · techniques and tactics from the ATT&amp;CK table embedded in the CLI</div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <div class="btn-group btn-group-sm">
+      <a class="btn btn-outline-primary" href="/p/{{ profile.slug }}/coverage/navigator.json?attack_version=19" title="Layer for ATT&CK Navigator (ATT&CK 19)">⬇ Navigator layer (v19)</a>
+      <a class="btn btn-outline-primary" href="/p/{{ profile.slug }}/coverage/navigator.json?attack_version=18" title="Layer remapped to ATT&CK 18 – use this if the hosted Navigator cannot load v19 layers">v18</a>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="/p/{{ profile.slug }}/coverage.json" title="Raw coverage JSON">JSON</a>
+  </div>
+</div>
+
+{% if error %}
+<div class="kc-callout kc-callout--warning"><span class="kc-callout-icon">⚠</span><div><p class="kc-callout-body mb-0">{{ error }}</p></div></div>
+{% else %}
+<section class="row g-3 mb-3">
+  <div class="col-6 col-xl-2"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num">{{ matrix.technique_total }}</span><span class="kc-stat-label">Techniques {{ help("Distinct technique IDs (parents and sub-techniques) referenced by at least one selected rule.") }}</span></div></div>
+  <div class="col-6 col-xl-2"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num">{{ matrix.parent_total }}</span><span class="kc-stat-label">Parent techniques</span></div></div>
+  <div class="col-6 col-xl-2"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num">{{ matrix.tactic_total }}</span><span class="kc-stat-label">Tactics</span></div></div>
+  <div class="col-6 col-xl-2"><div class="kc-stat-card {% if tagging.pct < 60 %}kc-stat-card--warning{% else %}kc-stat-card--primary{% endif %}"><span class="kc-stat-num">{{ tagging.pct }}%</span><span class="kc-stat-label">Include rules tagged {{ help("Share of selected <em>include</em> rules that carry ATT&amp;CK metadata (a tag on the RuleGroup counts for all rules inside it). Untagged rules still log events – they just do not show up in coverage.") }}</span></div></div>
+  <div class="col-6 col-xl-2"><div class="kc-stat-card"><span class="kc-stat-num">{{ tagging.tagged }}</span><span class="kc-stat-label">Tagged rules</span></div></div>
+  <div class="col-6 col-xl-2"><div class="kc-stat-card {% if tagging.untagged %}kc-stat-card--warning{% endif %}"><span class="kc-stat-num">{{ tagging.untagged }}</span><span class="kc-stat-label">Untagged rules</span></div></div>
+</section>
+
+<div class="kc-surface rounded-3 p-3 mb-4">
+  {% include "_attack_matrix.html" %}
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="kc-surface rounded-3 p-3">
+      <h2 class="kc-section-title">Per Sysmon event</h2>
+      <div class="table-responsive"><table class="table table-sm kc-table mb-0"><thead><tr><th>Event</th><th>include</th><th>exclude</th><th>modules</th></tr></thead>
+        <tbody>{% for e in matrix.events %}<tr><td>{{ e.name }}</td><td>{{ e.include }}</td><td>{{ e.exclude }}</td><td>{{ e.modules|length }}</td></tr>{% endfor %}</tbody></table></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="kc-surface rounded-3 p-3">
+      <h2 class="kc-section-title">Include modules with untagged rules {{ help("These selected modules contain include rules without <code>technique_id</code> metadata. Add a tag in the rule editor (Rule name or RuleGroup name) to make them count.") }}</h2>
+      {% if tagging.untagged_modules %}
+      <ul class="list-unstyled mb-0 vsm-overlay-list vsm-scroll">{% for rel, n in tagging.untagged_modules %}<li><a href="/p/{{ profile.slug }}/m/{{ rel }}/edit"><code>{{ rel }}</code></a> <span class="kc-tag">{{ n }}</span></li>{% endfor %}</ul>
+      {% else %}<p class="text-muted mb-0">Every selected include rule is tagged.</p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -39,6 +39,7 @@
     </div>
     <a href="/p/{{ profile.slug }}/" class="kc-nav-link {% if request.url.path == '/p/' ~ profile.slug ~ '/' %}active{% endif %}">Overview</a>
     <a href="/p/{{ profile.slug }}/builds" class="kc-nav-link {% if '/builds' in request.url.path %}active{% endif %}">Builds</a>
+    <a href="/p/{{ profile.slug }}/coverage" class="kc-nav-link {% if '/coverage' in request.url.path %}active{% endif %}" title="ATT&amp;CK coverage of the selected modules">Coverage</a>
     <a href="/p/{{ profile.slug }}/help" class="kc-nav-link {% if request.url.path.endswith('/help') %}active{% endif %}" title="How the tool and Sysmon filtering work">Help</a>
     <span class="kc-tag kc-tag-blue">Sysmon {{ profile.sysmon_version }} · schema {{ schema_for_version[profile.sysmon_version] }}</span>
     <form method="post" action="/p/{{ profile.slug }}/build" class="m-0">

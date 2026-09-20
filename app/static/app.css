@@ -97,3 +97,28 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 /* dismissible intro on the dashboard */
 .vsm-intro { position: relative; }
 .vsm-intro .btn-close { position: absolute; top: 10px; right: 10px; }
+
+/* ATT&CK matrix */
+.vsm-matrix-search { max-width: 360px; }
+.vsm-matrix { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; align-items: flex-start; }
+.vsm-tactic { flex: 0 0 168px; display: flex; flex-direction: column; gap: 4px; }
+.vsm-tactic-head { background: var(--kc-navy); color: #fff; border-radius: var(--kc-radius-md); padding: 8px 10px; min-height: 52px; }
+.vsm-tactic-name { font-size: 12px; font-weight: 700; letter-spacing: .3px; }
+.vsm-tactic-meta { font-size: 10px; color: rgba(255,255,255,.55); }
+.vsm-tech { border-radius: var(--kc-radius-sm); padding: 5px 7px; font-size: 11px; line-height: 1.3; cursor: pointer; border: 1px solid transparent; position: relative; }
+.vsm-tech-id { font-family: var(--kc-font-mono); font-size: 10px; font-weight: 700; opacity: .8; }
+.vsm-tech-name { display: block; }
+.vsm-tech-count { position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 700; opacity: .7; }
+.vsm-tech-parent-only > .vsm-tech-name { font-style: italic; }
+.vsm-lvl-1 { background: #dbeeff; color: var(--kc-navy); }
+.vsm-lvl-2 { background: #9fcdf5; color: var(--kc-navy); }
+.vsm-lvl-3 { background: var(--kc-blue-2); color: #fff; }
+.vsm-lvl-4 { background: var(--kc-navy-2); color: #fff; }
+.vsm-lvl-3 .vsm-tech-count, .vsm-lvl-4 .vsm-tech-count, .vsm-lvl-3 .vsm-tech-id, .vsm-lvl-4 .vsm-tech-id { opacity: .85; }
+.vsm-tech:hover { border-color: var(--kc-cyan); }
+.vsm-tech-active, .vsm-sub.vsm-tech-active { outline: 2px solid var(--kc-amber); outline-offset: 1px; }
+.vsm-subs { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+.vsm-sub { background: rgba(255,255,255,.88); color: var(--kc-navy); border-radius: 3px; padding: 2px 5px; font-size: 10px; position: relative; padding-right: 22px; }
+.vsm-sub .vsm-tech-count { top: 2px; right: 5px; }
+.vsm-cell-swatch { display: inline-block; width: 14px; height: 10px; border-radius: 2px; margin-left: 4px; }
+.vsm-tech-detail { border-left: 4px solid var(--kc-amber); }

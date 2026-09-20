@@ -121,6 +121,21 @@ def validate_text(xml_text: str, sysmon_version: str | None = None) -> tuple[lis
     return parse_findings(r.stdout + "\n" + r.stderr), r.returncode
 
 
+# ── coverage of the current selection (no build needed) ─────────────────────
+def run_coverage(profile: Profile, fmt: str = "json", attack_version: str | None = None) -> tuple[str, str, int]:
+    """Run `sysmon-modular coverage` over the profile's selected modules.
+    Returns (stdout, stderr, exit code); stdout is JSON / navigator layer / text."""
+    with tempfile.TemporaryDirectory() as td:
+        base = compose_tree(Path(td))
+        include_list = Path(td) / "include_rules.txt"
+        include_list.write_text(to_include_list(profile))
+        args = ["coverage", "--base-path", str(base), "--include-list", str(include_list), "--format", fmt]
+        if attack_version:
+            args += ["--attack-version", attack_version]
+        r = run_cli(args, cwd=base)
+    return r.stdout, r.stderr, r.returncode
+
+
 # ── build ────────────────────────────────────────────────────────────────────
 def profile_build_dir(slug: str) -> Path:
     return config.BUILDS_DIR / slug
