@@ -626,16 +626,18 @@
 <!-- Wizard: guided start (auto-opens on first visit, also via "Start here") -->
 <div class="modal fade" id="wizard" tabindex="-1" x-data="wizard" x-init="if ($store.app.showWizard) $nextTick(() => open())" @open-wizard.window="step = 1; open()" @hidden.bs.modal="$store.app.dismissWizard()">
   <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content vsm-wizard">
-    <div class="modal-header"><div><div class="kc-section-tag">Guided start · step <span x-text="step"></span> of 3</div><h2 class="kc-section-title mb-0" x-text="step === 1 ? 'What are you configuring?' : step === 2 ? 'Which Sysmon version runs on those hosts?' : 'Name the profile'"></h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Skip"></button></div>
+    <div class="modal-header"><div><div class="kc-section-tag">Guided start · step <span x-text="step"></span> of 3</div><h2 class="kc-section-title mb-0" x-text="step === 1 ? 'Which configuration do you start from?' : step === 2 ? 'Which Sysmon version runs on those hosts?' : 'Name the profile'"></h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Skip"></button></div>
     <div class="modal-body">
       <template x-if="step === 1">
         <div>
-          <p class="text-muted">Each choice starts from one of upstream's published configurations. You can change every module afterwards.</p>
+          <p class="text-muted">These are sysmon-modular's own published configurations (their names, their module selections). Pick by the <em>use</em> line – every module can be changed afterwards.</p>
           <div class="row g-3">
-            <template x-for="e in envs" :key="e.id">
-              <div class="col-md-6"><button type="button" class="vsm-env" :class="{ active: env === e.id }" @click="pick(e.id)">
-                <span class="vsm-env-icon" x-text="e.icon"></span><span class="vsm-env-title" x-text="e.title"></span><span class="vsm-env-text" x-text="e.text"></span>
-                <span class="kc-tag mt-2" x-text="($store.app.presets.find(p => p.id === e.preset)?.modules.length || 0) + ' modules'"></span></button></div>
+            <template x-for="p in presets" :key="p.id">
+              <div class="col-md-6"><button type="button" class="vsm-env" :class="{ active: presetId === p.id }" @click="pick(p.id)">
+                <span class="vsm-env-icon" x-text="icons[p.id] || '📦'"></span><span class="vsm-env-title" x-text="p.name"></span>
+                <span class="vsm-env-use"><strong>Use for:</strong> <span x-text="p.use"></span></span>
+                <span class="vsm-env-text" x-text="p.description"></span>
+                <span class="d-flex gap-1 mt-2"><span class="kc-tag" x-text="p.modules.length + ' modules'"></span><span class="kc-tag kc-tag-blue" x-text="p.tagline.split(' ')[0]"></span></span></button></div>
             </template>
           </div>
         </div>

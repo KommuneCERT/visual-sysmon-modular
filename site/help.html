@@ -39,13 +39,14 @@
 
 <section id="presets" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Presets &amp; guided start</h2>
-  <p>The guided start (first visit, or <em>Guided start</em> on the Profile page) creates a profile from one of upstream's published configurations. They are pure module selections, recomputed from the current upstream snapshot on every site build:</p>
+  <p>The guided start (first visit, or <em>Guided start</em> on the Profile page) creates a profile from one of sysmon-modular's own published configurations – same names, same module selections, recomputed from the current upstream snapshot on every site build:</p>
   <dl class="vsm-dl">
-    <dt>Balanced</dt><dd>Upstream's default <code>sysmonconfig.xml</code>: every module except FileDelete archiving (event 23). Start here for workstations and servers.</dd>
-    <dt>Balanced + FileDelete archiving</dt><dd>Adds event 23, which also copies deleted files into the Sysmon archive directory. Forensically useful, costs disk.</dd>
-    <dt>Defender for Endpoint augment</dt><dd>Balanced minus the modules whose telemetry MDE already collects (<code>0_custom_configuration/mde_covered_modules.txt</code> upstream), so Sysmon complements instead of duplicating.</dd>
-    <dt>Excludes only</dt><dd>Only the noise-exclusion modules: every event type is logged except known noise. Research use; very high volume.</dd>
+    <dt>Balanced</dt><dd><code>sysmonconfig.xml</code>: every module except FileDelete archiving (event 23). <strong>Use for</strong> workstations and servers – the regular starting point.</dd>
+    <dt>Balanced with FileDelete</dt><dd><code>sysmonconfig-with-filedelete.xml</code>: adds event 23, which also copies deleted files into the Sysmon archive directory. <strong>Use for</strong> servers and high-value hosts where preserved deleted files matter more than disk.</dd>
+    <dt>MDE augment</dt><dd><code>sysmonconfig-mde-augment.xml</code>: Balanced minus the modules whose telemetry Microsoft Defender for Endpoint already collects (<code>0_custom_configuration/mde_covered_modules.txt</code> upstream). <strong>Use for</strong> hosts onboarded to MDE.</dd>
+    <dt>Excludes only</dt><dd><code>sysmonconfig-excludes-only.xml</code>: only the noise-exclusion modules, so every event type is logged except known noise. <strong>Use for</strong> research and lab hosts; very high volume.</dd>
   </dl>
+  <p><strong>Server roles</strong> (domain controllers, SQL, Exchange/IIS, RDS…) do not need their own presets: Sysmon records the same event types on every Windows host, and the detection modules apply everywhere. What differs per role is the <em>noise</em> – database agents, backup, web workers – so start from Balanced and add your own <em>exclude</em> modules for the software on those hosts. Role-specific security telemetry (Kerberos, mailbox access, HTTP requests) comes from the Windows Security log and the application logs, not from Sysmon.</p>
   <p>The preset settings also mirror upstream's release build: comments preserved and unsupported events/fields <em>removed</em> for the chosen Sysmon target. Everything can be changed afterwards – a preset is just the starting selection.</p>
   <p>The <strong>Before you deploy</strong> list on the Profile and build pages turns common pitfalls into plain-language notes: empty or exclude-only selections, high-volume event types (ImageLoad, ProcessAccess, Registry – marked with a red <em>high</em> tag in the sidebar; hover it for the reason) without their exclusions, target-version mismatches, analyzer hints and a profile changed after its last build.</p>
 </section>

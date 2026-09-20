@@ -10,9 +10,9 @@ ATT&CK coverage, semantic diff) is compiled to WebAssembly, so the result is exa
 
 ## What you can do
 
-- **Guided start** – first visit asks what you are configuring (workstations, servers, hosts with
-  Defender for Endpoint, research) and which Sysmon version, then creates a profile from one of
-  upstream's published presets (Balanced, +FileDelete, MDE augment, Excludes only).
+- **Guided start** – first visit lets you pick one of sysmon-modular's own published configurations
+  (Balanced, Balanced with FileDelete, MDE augment, Excludes only – each with a "use for" line) and the
+  Sysmon version on your hosts, then creates a profile from it.
 - **Plain-language rules** – every module card, search hit and editor rule is explained as a sentence
   ("Log ProcessCreate when Image is the process `wevtutil.exe` and CommandLine contains …").
 - **Before you deploy** – a checklist on the Profile and build pages flags empty/exclude-only selections,
@@ -78,6 +78,8 @@ Tests:
 python3 -m pytest -q tests           # catalog generator
 node --test 'tests/js/*.test.mjs'    # model, catalog, search, state, ATT&CK matrix
 node tests/wasm_smoke.mjs            # WASM engine end-to-end (merge/validate/coverage/diff)
+# browser end-to-end (needs the static server running and Playwright, see the header of the file):
+node tests/e2e/e2e.mjs               # BASE=https://… runs it against a deployed site
 ```
 
 ### GitHub Pages deployment

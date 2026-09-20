@@ -1,0 +1,116 @@
+// Browser end-to-end test. Needs a running static server and Playwright:
+//   python3 -m http.server -d site 8080 &
+//   docker run --rm --network host -v "$PWD:/w" -w /w mcr.microsoft.com/playwright:v1.47.0-jammy \
+//     sh -c "npm i --no-save playwright@1.47.0 >/dev/null && node tests/e2e/e2e.mjs"
+// BASE=https://kommunecert.github.io/visual-sysmon-modular runs it against the live site.
+import { chromium } from "playwright";
+import assert from "node:assert/strict";
+
+const base = (process.env.BASE || "http://localhost:8080").replace(/\/$/, "");
+const shots = process.env.SHOTS || "";
+const browser = await chromium.launch();
+const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: 1500, height: 1000 } });
+const page = await ctx.newPage();
+const errors = [];
+page.on("console", m => { if (m.type() === "error" || m.type() === "warning") errors.push(`[${m.type()}] ${m.text()}`); });
+page.on("pageerror", e => errors.push(`[pageerror] ${e.message}`));
+const shot = async name => { if (shots) await page.screenshot({ path: `${shots}/${name}.png` }); };
+const hashIs = re => page.waitForFunction(r => new RegExp(r).test(location.hash), re.source, { timeout: 120000 });
+const step = (name, ok, extra = "") => { console.log(`${ok ? "✓" : "✗"} ${name}${extra ? " – " + extra : ""}`); assert.ok(ok, name); };
+
+// ── wizard on first visit ──
+await page.goto(base + "/#/", { waitUntil: "networkidle" });
+await page.waitForSelector("#wizard.show", { timeout: 15000 });
+const presetCards = await page.locator("#wizard .vsm-env").count();
+step("wizard auto-opens with upstream presets", presetCards === 4, `${presetCards} cards`);
+await shot("wizard");
+await page.click("#wizard .vsm-env:has(.vsm-env-title:text-is('Balanced'))");
+await page.click("#wizard button:has-text('Sysmon 14.1')");
+await page.click("#wizard button:has-text('Next')");
+await page.fill("#wizard input", "ws-pilot");
+await page.click("#wizard button:has-text('Create profile')");
+await page.waitForFunction(() => location.hash === "#/profile" && !document.querySelector("#wizard.show"));
+await page.waitForTimeout(300);
+const prof = await page.evaluate(() => { const p = Alpine.store("app").profile; return { slug: p.slug, n: p.modules.length, v: p.sysmon_version, preset: p.preset, unsupported: p.unsupported }; });
+step("profile created from Balanced preset", prof.preset === "balanced" && prof.n === 433 && prof.v === "14.1" && prof.unsupported === "exclude", JSON.stringify(prof));
+step("checklist says not built yet", (await page.locator(".vsm-checklist").first().innerText()).includes("Not built yet"));
+
+// ── search ──
+await page.goto(base + "/#/?q=lsass"); await page.waitForTimeout(500);
+const sentences = await page.locator(".vsm-hit .vsm-sentence").allInnerTexts();
+step("search hits with sentences", (await page.locator(".vsm-hit").count()) > 5 && sentences.some(t => t.startsWith("Log ProcessAccess when")));
+await page.fill("#q", "lsass_noise"); await page.waitForTimeout(500);
+step("module-level hit", (await page.locator(".vsm-hit-ctx").first().innerText()).includes("whole module"));
+
+// ── category: toggles, volume badge, sentences ──
+await page.goto(base + "/#/c/7_image_load"); await page.waitForTimeout(400);
+step("high volume badge + popover", (await page.locator(".kc-tag-red:has-text('high volume')").count()) === 1);
+await page.hover(".vsm-vol-tag >> nth=0"); await page.waitForTimeout(400);
+step("sidebar volume popover", (await page.locator(".popover").innerText()).includes("High-volume"));
+step("card sentence", (await page.locator(".vsm-card .vsm-sentence").first().innerText()).match(/^(Log|Ignore) ImageLoad when /) !== null);
+const before = await page.evaluate(() => Alpine.store("app").selected.size);
+await page.locator(".vsm-card .vsm-switch").first().uncheck(); await page.waitForTimeout(200);
+step("toggle off persists", (await page.evaluate(() => Alpine.store("app").selected.size)) === before - 1);
+await page.locator(".vsm-card .vsm-switch").first().check();
+
+// ── editor: explain + save via WASM ──
+await page.goto(base + "/#/m/1_process_creation/include_clear_windows_event_logs.xml/edit"); await page.waitForTimeout(500);
+step("editor renders fields", (await page.locator(".vsm-cond select").first().inputValue()) === "OriginalFileName");
+await page.fill(".vsm-cond input.font-monospace >> nth=0", "changed.exe"); await page.waitForTimeout(100);
+step("explain updates live", (await page.locator(".vsm-rule .vsm-sentence").first().innerText()).includes("changed.exe"));
+await page.click("button:text-is('Save') >> nth=0");
+await page.waitForFunction(() => document.body.innerText.includes("Saved to overlay"), null, { timeout: 60000 });
+step("editor save validated by engine", true);
+await page.goto(base + "/#/c/1_process_creation"); await page.waitForTimeout(400);
+step("edited badge", (await page.locator(".vsm-card:has-text('include_clear_windows_event_logs.xml') .kc-tag-green").count()) === 1);
+
+// ── raw editor: invalid field blocked ──
+await page.goto(base + "/#/m/1_process_creation/include_clear_windows_event_logs.xml/raw"); await page.waitForTimeout(400);
+const xml = await page.inputValue("textarea.vsm-xml-editor");
+await page.fill("textarea.vsm-xml-editor", xml.replace(/<CommandLine /g, "<Bogus ").replace(/<\/CommandLine>/g, "</Bogus>"));
+await page.click("button:text-is('Save') >> nth=0");
+await page.waitForFunction(() => document.body.innerText.includes("Not saved"), null, { timeout: 60000 });
+step("raw save blocked on SYS202", (await page.locator(".vsm-findings").innerText()).includes("SYS202"));
+
+// ── build ──
+await page.click("nav button:has-text('▶ Build')");
+await hashIs(/^#\/build\//); await page.waitForTimeout(600);
+step("build ok, deploy tab default", (await page.locator("h1 .kc-severity").innerText()) === "OK" && (await page.locator(".nav-tabs .nav-link.active").innerText()) === "Deploy");
+step("deploy commands", (await page.locator(".vsm-cmd").count()) === 4);
+await page.click(".nav-tabs >> text=Coverage"); await page.waitForTimeout(300);
+step("matrix in build", (await page.locator(".vsm-tactic").count()) >= 10);
+await page.click(".nav-tabs >> text=XML"); await page.waitForTimeout(800);
+step("xml view highlighted", (await page.locator(".vsm-xml-view .x-t").count()) > 100);
+await shot("build");
+const firstBuild = await page.evaluate(() => location.hash);
+await page.click("nav button:has-text('▶ Build')");
+await page.waitForFunction(b => location.hash.startsWith("#/build/") && location.hash !== b, firstBuild); await page.waitForTimeout(500);
+await page.click(".nav-tabs >> text=Diff"); await page.waitForTimeout(300);
+const diffText = await page.locator("[x-show=\"tab === 'diff'\"]").innerText();
+const diffMeta = await page.evaluate(() => { const b = Alpine.store("app").build(location.hash.slice(8)); return { has: !!b.diff, before: b.diff_before, n: Alpine.store("app").buildsFor(b.profile).length }; });
+step("diff against previous build", diffText.includes("No semantic changes"), JSON.stringify(diffMeta) + " " + diffText.slice(0, 80).replace(/\n/g, " "));
+
+// ── coverage page ──
+await page.goto(base + "/#/coverage"); await page.waitForSelector(".vsm-tactic", { timeout: 60000 });
+await page.locator(".vsm-tech").first().click(); await page.waitForTimeout(200);
+step("coverage matrix + drill-down", (await page.locator(".vsm-tech-detail").isVisible()));
+
+// ── help navigation ──
+await page.goto(base + "/#/help"); await page.waitForSelector("#help-root section");
+await page.click(".vsm-toc a:has-text('Condition operators')");
+const scrolled = await page.waitForFunction(() => location.hash === "#/help/conditions" && Math.abs(document.getElementById("conditions").getBoundingClientRect().top) < 120, null, { timeout: 5000 }).then(() => true).catch(() => false);
+step("help section link", scrolled, await page.evaluate(() => location.hash + " top=" + Math.round(document.getElementById("conditions").getBoundingClientRect().top)));
+
+// ── export / import / persistence ──
+const [dl] = await Promise.all([page.waitForEvent("download"), page.evaluate(() => Alpine.store("app").exportAll())]);
+const exportPath = await dl.path();
+await page.evaluate(() => localStorage.clear());
+await page.reload(); await page.waitForSelector(".vsm-catlist a");
+await page.click("#wizard button:has-text('Skip')").catch(() => {});
+await page.goto(base + "/#/profile"); await page.waitForTimeout(300);
+await page.setInputFiles("input[type=file][accept='.json']", exportPath); await page.waitForTimeout(500);
+step("export → clear → import restores overlay + profile", (await page.evaluate(() => Alpine.store("app").overlayRels.length)) === 1 && (await page.evaluate(() => Alpine.store("app").profiles.map(p => p.slug))).includes("ws-pilot"));
+
+console.log(`console errors: ${errors.length}`); errors.forEach(e => console.log("  ", e.slice(0, 200)));
+assert.equal(errors.length, 0);
+await browser.close();

@@ -368,6 +368,10 @@ document.addEventListener("alpine:init", () => {
     explainBare(rg, ev) { return `${ev.onmatch === "exclude" ? "Ignore" : "Log"} ${ev.event_type} when ${describeBare(ev.conditions, rg.group_relation)}`; },
     schema: vsm.fields, eventTypes: Object.keys(vsm.fields.events),
     init() {
+      this.load();
+      this.$watch("$store.app.route.rel", () => { this.findings = null; this.hasErrors = false; this.status = ""; this.xmlPreview = ""; this.dirty = false; this.load(); });
+    },
+    load() {
       const rel = this.$store.app.route.rel;
       this.m = vsm.catalog.module(rel);
       if (!this.m) { this.error = "Module not found"; return; }
@@ -403,7 +407,8 @@ document.addEventListener("alpine:init", () => {
 
   A.data("pageRaw", () => ({
     m: null, xml: "", force: false, findings: null, parseError: "", busy: false, msg: "",
-    init() { const rel = this.$store.app.route.rel; this.m = vsm.catalog.module(rel); this.xml = this.m ? vsm.catalog.xml(rel) : ""; this.$nextTick(() => window.vsmXml.init(this.$el)); },
+    init() { this.load(); this.$watch("$store.app.route.rel", () => { this.findings = null; this.parseError = ""; this.msg = ""; this.load(); }); },
+    load() { const rel = this.$store.app.route.rel; this.m = vsm.catalog.module(rel); this.xml = this.m ? vsm.catalog.xml(rel) : ""; this.$nextTick(() => { window.vsmXml.init(this.$el); this.$el.querySelector("textarea")?.dispatchEvent(new Event("input")); }); },
     async validate() {
       this.busy = true; this.msg = "";
       const [ok, err] = isWellFormed(this.xml);
@@ -431,7 +436,9 @@ document.addEventListener("alpine:init", () => {
     get matrix() { return this.b?.coverage ? buildMatrix(this.b.coverage) : null; },
     get others() { return this.$store.app.buildsFor(this.$store.app.state.current).filter(x => x.ok && x.id !== this.b?.id); },
     sevLabel: s => SEV_LABEL[s],
-    async init() {
+    init() { this.load(); this.$watch("$store.app.route.id", () => this.load()); },
+    load() {
+      this.xml = null; this.diffHtml = "";
       if (!this.b) return;
       this.tab = this.b.ok && !this.b.summary.error ? "deploy" : "findings";
       this.diffBefore = this.b.diff_before || this.others[0]?.id || "";
@@ -463,18 +470,14 @@ document.addEventListener("alpine:init", () => {
   }));
 
   A.data("wizard", () => ({
-    step: 1, env: "", version: S.DEFAULT_SYSMON_VERSION, name: "",
-    envs: [
-      { id: "workstations", preset: "balanced", title: "Workstations", icon: "💻", text: "Upstream's Balanced configuration: all detections plus the noise exclusions for common desktop software. The right default for most fleets." },
-      { id: "servers", preset: "balanced", title: "Servers", icon: "🖥️", text: "Also Balanced. Servers are quieter per host but run different software – expect to add a few exclusions of your own after the first days." },
-      { id: "mde", preset: "mde-augment", title: "Hosts with Defender for Endpoint", icon: "🛡️", text: "Balanced minus what MDE already records, so Sysmon adds detail (command lines, DNS, named pipes…) instead of duplicating telemetry." },
-      { id: "research", preset: "excludes-only", title: "Research / lab (verbose)", icon: "🔬", text: "Only the exclusion modules: every event type is logged except known noise. Very high volume – for short investigations on a few hosts." },
-    ],
-    get preset() { const e = this.envs.find(x => x.id === this.env); return e ? vsm.catalog.presets.find(p => p.id === e.preset) : null; },
-    pick(id) { this.env = id; this.name = this.name || this.envs.find(x => x.id === id).title.toLowerCase().split(" ")[0]; this.step = 2; },
+    step: 1, presetId: "", version: S.DEFAULT_SYSMON_VERSION, name: "",
+    icons: { "balanced": "⚖️", "balanced-filedelete": "🗄️", "mde-augment": "🛡️", "excludes-only": "🔬" },
+    get presets() { return vsm.catalog.presets; },
+    get preset() { return this.presets.find(p => p.id === this.presetId) || null; },
+    pick(id) { this.presetId = id; this.name = this.name || (id === "balanced" ? "workstations" : id); this.step = 2; },
     finish() {
       try {
-        const slug = this.$store.app.createProfile(this.name || this.env, `preset:${this.preset.id}`, "", { sysmon_version: this.version });
+        const slug = this.$store.app.createProfile(this.name || this.presetId, `preset:${this.preset.id}`, "", { sysmon_version: this.version });
         this.$store.app.dismissWizard();
         window.bootstrap.Modal.getInstance(document.getElementById("wizard"))?.hide();
         this.$store.app.notify(`Profile '${slug}' created from the ${this.preset.name} preset – next: press Build`);

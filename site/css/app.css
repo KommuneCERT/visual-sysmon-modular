@@ -193,7 +193,8 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 .vsm-env:hover, .vsm-env.active { border-color: var(--kc-blue); box-shadow: var(--kc-shadow-md); }
 .vsm-env-icon { font-size: 22px; }
 .vsm-env-title { font-weight: 700; color: var(--kc-navy); margin-top: 4px; }
-.vsm-env-text { font-size: 13px; color: var(--kc-gray-600); margin-top: 4px; }
+.vsm-env-use { font-size: 13px; color: var(--kc-navy); margin-top: 4px; }
+.vsm-env-text { font-size: 12.5px; color: var(--kc-gray-600); margin-top: 4px; }
 .vsm-wizard .modal-header { border-bottom: 3px solid var(--kc-cyan); }
 .vsm-deploy li { margin-bottom: 12px; font-size: 14px; }
 .vsm-cmd { display: flex; gap: 8px; align-items: center; margin: 6px 0; background: var(--kc-navy); border-radius: var(--kc-radius-md); padding: 6px 10px; }
