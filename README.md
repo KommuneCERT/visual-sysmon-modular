@@ -6,7 +6,7 @@ Pick modules per Sysmon event, edit rules in a form or as raw XML, validate, mer
 ATT&CK coverage, semantic diff) is compiled to WebAssembly, so the result is exactly what
 `sysmon-modular merge` would produce. Nothing is uploaded anywhere.
 
-**Live site:** https://\<your-github-user\>.github.io/visual-sysmon-modular/ (after enabling Pages, see below)
+**Live site:** https://kommunecert.github.io/visual-sysmon-modular/
 
 ## What you can do
 
