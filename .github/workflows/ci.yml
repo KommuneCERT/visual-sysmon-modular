@@ -1,0 +1,23 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths-ignore: ["README.md"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: true }
+      - uses: actions/setup-go@v5
+        with: { go-version-file: vendor/sysmon-modular/tooling/go.mod }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: pip install pytest
+      - run: tools/build.sh
+      - run: python -m pytest -q tests
+      - run: node --test 'tests/js/*.test.mjs'
+      - run: node tests/wasm_smoke.mjs

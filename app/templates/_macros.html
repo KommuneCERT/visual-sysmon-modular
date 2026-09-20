@@ -1,4 +1,0 @@
-{# Small "?" that opens a Bootstrap popover – keeps explanations out of the layout until hovered/focused. #}
-{% macro help(text, title='') -%}
-<button type="button" class="vsm-help" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="top"{% if title %} data-bs-title="{{ title }}"{% endif %} data-bs-content="{{ text }}" aria-label="Help">?</button>
-{%- endmacro %}

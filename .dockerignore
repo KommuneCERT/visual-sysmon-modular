@@ -1,5 +1,3 @@
-data/
-.git/
-vendor/sysmon-modular/.git/
-**/__pycache__/
-.pytest_cache/
+node_modules/
+site/data/
+site/wasm/

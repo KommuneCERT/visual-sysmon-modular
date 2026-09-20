@@ -1,95 +1,92 @@
 # Visual Sysmon Modular
 
-A web GUI on top of [olafhartong/sysmon-modular](https://github.com/olafhartong/sysmon-modular).
-Instead of hand-editing XML modules and include lists, you pick modules per category, edit rules in a
-form (or as raw XML with validation) and press **Build** – upstream's own CLI (`sysmon-modular merge`)
-then merges everything into a `sysmonconfig.xml`.
+A browser-only GUI for [olafhartong/sysmon-modular](https://github.com/olafhartong/sysmon-modular).
+Pick modules per Sysmon event, edit rules in a form or as raw XML, validate, merge and download a
+`sysmonconfig.xml` – all inside your browser. Upstream's own Go tooling (merge, validate, analyze,
+ATT&CK coverage, semantic diff) is compiled to WebAssembly, so the result is exactly what
+`sysmon-modular merge` would produce. Nothing is uploaded anywhere.
 
-Everything runs in a single Docker container: Python/FastAPI with HTMX/Alpine on the front end and
-upstream's Go CLI as the build engine.
+**Live site:** https://\<your-github-user\>.github.io/visual-sysmon-modular/ (after enabling Pages, see below)
 
-## Getting started
+## What you can do
+
+- **Search** the current configuration as you type – hits are the matching `<Rule>`/condition in
+  context (module → RuleGroup → event), syntax-highlighted with the match marked.
+- **Profiles** – independent module selections with their own target Sysmon version (12–15) and
+  build options; one per fleet.
+- **Categories** – the same directories as upstream; toggle include (detection) and exclude (noise)
+  modules, or select all/includes/excludes per category.
+- **Rule editor** – RuleGroup → event → Rule → conditions with field/operator dropdowns from the
+  Sysmon schema. Saving validates with upstream's validator.
+- **Raw XML** editor with highlighting, validation and "save anyway".
+- **Overlay** – upstream modules are never changed; your edits and custom modules shadow them.
+  *Reset to upstream* removes your copy.
+- **Build** – merge + schema validation + analyzer; findings by severity, ATT&CK matrix, semantic diff
+  against the previous build, log and highlighted XML. Last 10 builds per profile are kept.
+- **Coverage** – live ATT&CK tactic × technique matrix for the selected modules, tagged-vs-untagged
+  rule stats, Navigator layer export.
+- **Import/export** of upstream-style include/exclude lists, and **Save / Load** of everything
+  (profiles + overlay) as one JSON file.
+- **Help** page explaining the workflow and how Sysmon include/exclude filtering works.
+
+## Where your data lives
+
+In your browser only: profiles and edited modules in `localStorage`, build outputs in IndexedDB.
+Clearing site data or switching devices starts from scratch – use **Save / Load** to export a JSON
+file and keep it in your own repo. Exports reference upstream modules by path, so they stay valid
+across upstream updates.
+
+## How it is built
+
+```
+vendor/sysmon-modular/      upstream, pinned git submodule
+wasm/main.go                syscall/js wrapper around upstream's internal packages
+tools/build_catalog.py      → site/data/{catalog,fields,upstream}.json   (stdlib Python)
+tools/build.sh              runs the generator and compiles the WASM engine into site/
+site/                       the static site: index.html + ES modules + Alpine.js + Bootstrap
+  js/engine-worker.js       Web Worker hosting the Go/WASM engine (loaded on first use, ~4 MB)
+  js/model.js               XML ⇄ rule model (own small parser, no DOM dependency)
+  js/catalog.js, search.js, attack.js, state.js, includelist.js
+```
+
+The wrapper is copied into `vendor/sysmon-modular/tooling/cmd/vsmwasm/` at build time because the
+packages it uses are Go `internal` packages; nothing in the submodule is modified permanently.
+
+### Local development
+
+Requirements: Python 3.12, Node 22 and Go 1.22 (or Docker – `tools/build.sh` falls back to the
+`golang` image when `go` is missing).
 
 ```bash
 git clone --recurse-submodules <this repo>
 cd visual-sysmon-modular
-docker compose up -d --build
-# → http://localhost:8080
+tools/build.sh                       # generates site/data and site/wasm
+python3 -m http.server -d site 8080  # → http://localhost:8080
 ```
 
-The first start creates a **default** profile with every upstream module selected.
-
-## How it works
-
-```
-/opt/sysmon-modular   upstream modules (git submodule, read-only inside the container)
-/data                 Docker volume with user state
-  profiles/<slug>.json       selected modules + build settings
-  overlay/<category>/*.xml   edited/custom modules (copy-on-write on top of upstream)
-  builds/<profile>/<time>/   sysmonconfig.xml, include_rules.txt, build.log, coverage.json, diff.json
-```
-
-- **Search** (start page) – free-text search across the selected modules (or all): module path, RuleGroup name,
-  event, rule name, fields, operators, values, ATT&CK IDs. Hits are shown as the matching `<Rule>`/condition
-  in context (module → RuleGroup → event) with syntax highlighting and match marking, updated as you type.
-- **Profiles** – several independent selections (e.g. `servers`, `workstations`), each with its own
-  target Sysmon version (12–15).
-- **Categories** – the same directories as upstream (`1_process_creation`, `3_network_connection_initiated`, …).
-  Every module can be toggled; "select all / includes / excludes" per category.
-- **Rule editor** – RuleGroup → event (include/exclude) → Rule (and/or) → conditions, with field and
-  condition dropdowns from the Sysmon schema. Saving validates via `sysmon-modular validate`.
-- **Raw XML** – syntax-highlighted editor with *Validate* (same CLI) and "save anyway". All XML views
-  (search hits, generated XML, build output) are highlighted by a small dependency-free script.
-- **Overlay** – upstream is never touched. Editing an upstream module stores a copy in `overlay/` that
-  shadows the original at build time. *Reset to upstream* deletes the copy. Custom modules only live in the overlay.
-- **Build** – composes upstream + overlay into a temporary tree and runs
-  `sysmon-modular merge --include-list … --sysmon-version … --analyze`. The result page shows findings
-  (errors/warnings/performance/recommendations), ATT&CK coverage, a semantic diff against the previous build, and the log.
-- **ATT&CK coverage** – live tactic × technique matrix for the current selection (only rules tagged with
-  `technique_id=…` count), drill-down to the modules behind each technique, tagged-vs-untagged rule stats and
-  a Navigator layer download. The same matrix is shown for every build.
-- **Import/export** of include/exclude lists in upstream's text format, so existing setups can be reused.
-
-## Updating upstream
+Tests:
 
 ```bash
-git submodule update --remote vendor/sysmon-modular
-docker compose up -d --build
+python3 -m pytest -q tests           # catalog generator
+node --test 'tests/js/*.test.mjs'    # model, catalog, search, state, ATT&CK matrix
+node tests/wasm_smoke.mjs            # WASM engine end-to-end (merge/validate/coverage/diff)
 ```
 
-Profiles and the overlay live in the volume and survive both rebuilds and upstream updates.
-Modules that disappear upstream are dropped from profiles on the next save.
+### GitHub Pages deployment
 
-## Tests
-
-```bash
-docker compose build
-docker run --rm visual-sysmon-modular:latest python -m pytest -q -p no:cacheprovider
-```
-
-The tests run against the real upstream tree and CLI inside the container (parse/serialise, overlay,
-profiles, build, HTTP).
-
-## Host directory instead of a named volume
-
-Change the volume in `docker-compose.yml` to `./data:/data` and add `user: "${UID}:${GID}"` to the
-service so the container can write to the directory.
-
-## Configuration
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `APP_TITLE` | `Visual Sysmon Modular` | Title shown in the navbar |
-| `UPSTREAM_DIR` | `/opt/sysmon-modular` | Upstream module tree |
-| `DATA_DIR` | `/data` | Profiles, overlay and builds |
-| `CLI_BIN` | `/usr/local/bin/sysmon-modular` | Upstream CLI binary |
+1. In the repository settings → **Pages**, set *Source* to **GitHub Actions**.
+2. Push to `main`. `.github/workflows/deploy.yml` builds `site/` and deploys it.
+3. Optional: in settings → **Actions → General**, allow GitHub Actions to create pull requests so the
+   weekly `upstream.yml` workflow can open "Bump sysmon-modular" PRs. Merging such a PR redeploys the
+   site with the new modules; CI runs the WASM smoke test against them first.
 
 ## Design
 
-The UI uses the KommuneCERT Bootstrap 5 design system (`app/static/kommunecert-theme.css`).
-Project-specific styles live in `app/static/app.css` and load after the theme.
-Bootstrap, HTMX and Alpine are vendored in `app/static/vendor/` – no CDN dependencies.
+The UI uses the KommuneCERT Bootstrap 5 design system (`site/css/kommunecert-theme.css`);
+project-specific styles live in `site/css/app.css`. Bootstrap, Alpine.js and Go's `wasm_exec.js`
+are vendored – no CDN dependencies.
 
 ## License
 
-This project wraps sysmon-modular, which is licensed under its own terms (see `vendor/sysmon-modular/license.md`).
+This project wraps sysmon-modular, which is licensed under its own terms
+(see `vendor/sysmon-modular/license.md`).

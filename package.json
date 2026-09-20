@@ -1,0 +1,11 @@
+{
+  "name": "visual-sysmon-modular",
+  "private": true,
+  "type": "module",
+  "description": "Build Sysmon configurations from sysmon-modular in the browser (static site, upstream tooling as WebAssembly)",
+  "scripts": {
+    "build": "tools/build.sh",
+    "test": "node --test 'tests/js/*.test.mjs' && node tests/wasm_smoke.mjs && python3 -m pytest -q tests",
+    "serve": "python3 -m http.server -d site 8080"
+  }
+}

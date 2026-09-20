@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visual Sysmon Modular</title>
+  <meta name="description" content="Build Sysmon configurations from sysmon-modular in the browser: pick modules, edit rules, validate, merge and download.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 50'%3E%3Cpath d='M22 6L7 13v11c0 9.18 6.38 17.77 15 20 8.62-2.23 15-10.82 15-20V13L22 6z' fill='%231a5fa8'/%3E%3Cpath d='M14 25l5 5 11-11' stroke='%230a9dd9' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/kommunecert-theme.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="js/xmlhl.js"></script>
+  <script src="js/vendor/bootstrap.bundle.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body x-data>
+<div id="boot-error" class="kc-callout kc-callout--danger m-4" hidden></div>
+
+<template x-if="$store.app">
+<div>
+<nav class="kc-navbar d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <a class="kc-logo text-decoration-none" href="#/">
+    <svg width="28" height="32" viewBox="0 0 44 50" fill="none" aria-hidden="true">
+      <path d="M22 6L7 13v11c0 9.18 6.38 17.77 15 20 8.62-2.23 15-10.82 15-20V13L22 6z" fill="rgba(30,95,168,0.6)" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
+      <path d="M14 25l5 5 11-11" stroke="#0a9dd9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <div class="kc-logo-name" x-text="$store.app.title"></div>
+      <div class="kc-logo-sub">sysmon-modular · in your browser</div>
+    </div>
+  </a>
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    <div class="dropdown">
+      <button class="btn btn-sm btn-outline-light dropdown-toggle vsm-profile-btn" data-bs-toggle="dropdown">Profile: <strong x-text="$store.app.profile?.name"></strong></button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <template x-for="p in $store.app.profiles" :key="p.slug">
+          <li><a class="dropdown-item" :class="{ active: p.slug === $store.app.state.current }" href="#/" @click.prevent="$store.app.switchProfile(p.slug)"><span x-text="p.name"></span> <span class="text-muted small">· <span x-text="p.modules.length"></span> modules · v<span x-text="p.sysmon_version"></span></span></a></li>
+        </template>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#/profile">+ New profile / settings</a></li>
+      </ul>
+    </div>
+    <a href="#/" class="kc-nav-link" :class="{ active: $store.app.route.page === 'search' }" title="Search the current configuration">Search</a>
+    <a href="#/profile" class="kc-nav-link" :class="{ active: $store.app.route.page === 'profile' }" title="Profile settings, bulk selection, import/export">Profile</a>
+    <a href="#/builds" class="kc-nav-link" :class="{ active: ['builds','build'].includes($store.app.route.page) }">Builds</a>
+    <a href="#/coverage" class="kc-nav-link" :class="{ active: $store.app.route.page === 'coverage' }" title="ATT&amp;CK coverage of the selected modules">Coverage</a>
+    <a href="#/help" class="kc-nav-link" :class="{ active: $store.app.route.page === 'help' }" title="How the tool and Sysmon filtering work">Help</a>
+    <div class="dropdown">
+      <button class="btn btn-sm btn-outline-light dropdown-toggle vsm-profile-btn" data-bs-toggle="dropdown" title="Your profiles and edited modules live only in this browser – save them to a file">💾 Save / Load</button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.exportAll()">⬇ Export all profiles &amp; modules (JSON)</a></li>
+        <li><a class="dropdown-item" href="#/profile">⬆ Import … (on the Profile page)</a></li>
+      </ul>
+    </div>
+    <span class="kc-tag kc-tag-blue" x-text="`Sysmon ${$store.app.profile?.sysmon_version} · schema ${$store.app.schemaFor[$store.app.profile?.sysmon_version]}`"></span>
+    <button class="btn btn-sm btn-info fw-bold text-white px-3" @click="$store.app.runBuild()" :disabled="!!$store.app.busy" title="Merge the selected modules into sysmonconfig.xml">▶ Build</button>
+  </div>
+</nav>
+
+<div class="vsm-shell">
+  <aside class="vsm-sidebar kc-surface" id="sidebar">
+    <div class="vsm-sidebar-head">
+      <span class="kc-section-tag">Categories</span>
+      <span class="kc-tag" x-text="`${$store.app.selected.size} / ${$store.app.moduleTotal} selected`"></span>
+    </div>
+    <div class="list-group list-group-flush vsm-catlist">
+      <template x-for="row in $store.app.sidebar" :key="row.cat.dirname">
+        <a :href="'#/c/' + row.cat.dirname" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" :class="{ active: row.cat.dirname === $store.app.route.cat }">
+          <span class="d-flex align-items-center gap-2 text-truncate"><span class="vsm-evid" x-text="row.cat.event_ids.join('/')"></span><span class="text-truncate" x-text="row.cat.label"></span></span>
+          <span class="badge rounded-pill" :class="row.selected === 0 ? 'vsm-badge-none' : row.selected === row.total ? 'vsm-badge-all' : 'vsm-badge-some'" x-text="row.selected + '/' + row.total"></span>
+        </a>
+      </template>
+    </div>
+  </aside>
+
+  <main class="vsm-main">
+    <div class="kc-callout kc-callout--success mb-3 vsm-flash" x-show="$store.app.flash" x-cloak><span class="kc-callout-icon">✓</span><div><p class="kc-callout-body mb-0" x-text="$store.app.flash"></p></div></div>
+    <div class="kc-callout kc-callout--danger mb-3" x-show="$store.app.engine.state === 'error'" x-cloak><span class="kc-callout-icon">✖</span><div><div class="kc-callout-title">Engine failed to load</div><p class="kc-callout-body mb-0" x-text="$store.app.engine.error"></p></div></div>
+
+    <!-- ═══════════ SEARCH (landing) ═══════════ -->
+    <template x-if="$store.app.route.page === 'search'">
+      <div x-data="pageSearch">
+        <div class="vsm-search-hero kc-surface rounded-3 p-4 mb-3">
+          <div class="vsm-search-form">
+            <div class="vsm-search-row">
+              <input id="q" class="form-control form-control-lg vsm-search-input" type="search" autofocus autocomplete="off" x-model.debounce.150ms="q"
+                     placeholder="Search the configuration – e.g. lsass, T1003, powershell -enc, DestinationPort 4444, adobe …">
+            </div>
+            <div class="vsm-search-filters">
+              <select class="form-select form-select-sm w-auto" x-model="kind" title="Module type"><option value="">include + exclude</option><option value="include">include only</option><option value="exclude">exclude only</option></select>
+              <select class="form-select form-select-sm w-auto" x-model="category" title="Category"><option value="">all categories</option><template x-for="row in $store.app.sidebar" :key="row.cat.dirname"><option :value="row.cat.dirname" x-text="row.cat.event_ids.join('/') + ' · ' + row.cat.label"></option></template></select>
+              <select class="form-select form-select-sm w-auto" x-model="scope" title="Which modules to search"><option value="selected" x-text="`selected modules (${$store.app.selected.size})`"></option><option value="all" x-text="`all modules (${$store.app.moduleTotal})`"></option></select>
+              <span class="text-muted small ms-auto">Words are AND-ed and matched case-insensitively against module path, RuleGroup name, event, rule name, fields, operators and values. <button x-help="'Each hit is one <code>&lt;Rule&gt;</code> or one bare condition, shown as it appears in the module, with its context (module → RuleGroup → event). Click the module to open the editor. A search with only a filter (e.g. <em>exclude only</em> + a category) lists every block in scope.'"></button></span>
+            </div>
+          </div>
+        </div>
+
+        <template x-if="result === null">
+          <div class="text-muted small px-1">Type to search <span x-text="$store.app.selected.size"></span> selected modules – or pick a filter to browse.
+            <span class="ms-2">Try: <a href="#" @click.prevent="q='lsass'">lsass</a> · <a href="#" @click.prevent="q='T1059'">T1059</a> · <a href="#" @click.prevent="q='onmatch=exclude'">exclude</a> · <a href="#" @click.prevent="q='DestinationPort'">DestinationPort</a></span>
+            <div class="kc-callout mt-4"><span class="kc-callout-icon">💡</span><div><div class="kc-callout-title">Pick modules → edit rules → Build → download sysmonconfig.xml</div><p class="kc-callout-body mb-0">Each category in the sidebar is a Sysmon event ID with upstream's include (detection) and exclude (noise) modules. Switch them on or off for this profile, tune a rule where needed, then press <strong>Build</strong> – the merge runs in your browser. Nothing leaves your machine; your profiles and edited modules are stored in this browser only, so use <strong>Save / Load</strong> to keep them. The <a href="#/help">Help</a> page explains the tool and how Sysmon's include/exclude filtering works.</p></div></div>
+          </div>
+        </template>
+        <template x-if="result !== null">
+          <div>
+            <div class="d-flex align-items-center gap-2 flex-wrap mb-2 px-1">
+              <span class="kc-tag kc-tag-blue" x-text="result.total + ' hits'"></span>
+              <span class="kc-tag" x-text="result.modules_hit + ' of ' + result.modules_scanned + ' modules'"></span>
+              <span class="kc-tag kc-tag-amber" x-show="result.truncated" x-text="'showing first ' + result.hits.length + ' – refine the search'"></span>
+            </div>
+            <p class="text-muted px-1" x-show="!result.hits.length">No matches.</p>
+            <template x-for="(hit, i) in result.hits" :key="i + hit.rel + hit.xml">
+              <div>
+                <div class="vsm-hit-module" x-show="newModule(i)">
+                  <span class="kc-severity" :class="hit.kind === 'exclude' ? 'kc-severity-medium' : 'kc-severity-info'" x-text="hit.kind"></span>
+                  <a :href="'#/m/' + hit.rel + '/edit'" class="vsm-hit-path"><code x-text="hit.rel"></code></a>
+                  <span class="kc-tag kc-tag-green" x-show="hit.source === 'edited'">edited</span><span class="kc-tag kc-tag-navy" x-show="hit.source === 'custom'">custom</span>
+                  <span class="kc-tag kc-tag-red" x-show="!hit.selected" title="Not selected in this profile – not part of the build">not selected</span>
+                  <a class="btn btn-sm btn-outline-secondary ms-auto py-0" :href="'#/m/' + hit.rel + '/raw'">XML</a>
+                </div>
+                <div class="vsm-hit" :class="{ 'vsm-hit--cont': !newCtx(i) }">
+                  <div class="vsm-hit-ctx text-muted" x-show="hit.block === 'module'">whole module – matched on path / group names
+                    <template x-for="t in hit.techniques" :key="t[0]"><a class="kc-tag kc-tag-blue ms-2" :href="'https://attack.mitre.org/techniques/' + t[0].replace('.', '/') + '/'" target="_blank" rel="noopener" :title="t[1]" x-text="t[0]"></a></template></div>
+                  <div class="vsm-hit-ctx" x-show="hit.block !== 'module' && newCtx(i)">
+                    <span class="x-t">&lt;RuleGroup</span> <span class="x-a">name</span>=<span class="x-s" x-text="'&quot;' + hit.group_name + '&quot;'"></span> <span class="x-a">groupRelation</span>=<span class="x-s" x-text="'&quot;' + hit.group_relation + '&quot;'"></span><span class="x-t">&gt;</span>
+                    <span class="vsm-hit-sep">›</span>
+                    <span class="x-t" x-text="'<' + hit.event_type"></span> <span class="x-a">onmatch</span>=<span class="x-s" x-text="'&quot;' + hit.onmatch + '&quot;'"></span><span class="x-t">&gt;</span>
+                  </div>
+                  <div class="vsm-hit-tech" x-show="hit.block !== 'module' && hit.techniques.length"><template x-for="t in hit.techniques" :key="t[0]"><span><a class="kc-tag kc-tag-blue" :href="'https://attack.mitre.org/techniques/' + t[0].replace('.', '/') + '/'" target="_blank" rel="noopener" x-text="t[0]"></a> <span class="text-muted small" x-text="t[1]"></span></span></template></div>
+                  <pre class="vsm-xml-view" :class="hit.block === 'module' ? 'vsm-hit-module-xml' : 'vsm-xml-view--auto vsm-hit-xml'" :data-mark="mark" x-xml="hit.xml"></pre>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <!-- ═══════════ PROFILE ═══════════ -->
+    <template x-if="$store.app.route.page === 'profile'">
+      <div x-data="pageProfile">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+          <div>
+            <span class="kc-section-tag">Profile <button x-help="'A profile is one selection of modules plus its build settings. Use one per fleet, e.g. <code>servers</code> and <code>workstations</code>. Profiles are independent, but edited/custom modules (the overlay) are shared by all of them.'"></button></span>
+            <h1 class="kc-section-title mb-0" x-text="$store.app.profile.name"></h1>
+            <p class="text-muted mb-0" x-show="$store.app.profile.description" x-text="$store.app.profile.description"></p>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" @click="$store.app.exportList()" title="Export this profile as an upstream-style include list">⬇ include_rules.txt</button>
+            <button class="btn btn-sm btn-primary" @click="$store.app.runBuild()">▶ Build now</button>
+          </div>
+        </div>
+        <div class="kc-callout kc-callout--warning mb-3"><span class="kc-callout-icon">💾</span><div><div class="kc-callout-title">Your work lives only in this browser</div><p class="kc-callout-body mb-0">Profiles, edited modules and build history are stored in this browser's local storage – nothing is uploaded. Clearing site data or switching devices loses them. <strong>Export</strong> a JSON file to keep or move your configuration; <strong>import</strong> it here to restore.</p></div></div>
+
+        <section class="row g-3 mb-4">
+          <div class="col-sm-6 col-xl-3"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num" x-text="$store.app.selected.size"></span><span class="kc-stat-label" x-text="'Selected modules of ' + $store.app.moduleTotal"></span></div></div>
+          <div class="col-sm-6 col-xl-3"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num" x-text="$store.app.sidebar.length"></span><span class="kc-stat-label">Categories</span></div></div>
+          <div class="col-sm-6 col-xl-3"><div class="kc-stat-card kc-stat-card--warning"><span class="kc-stat-num" x-text="$store.app.overlayRels.length"></span><span class="kc-stat-label">Custom / edited modules <button x-help="'Modules in the overlay: upstream modules you have changed plus modules you created. They shadow upstream in every profile\'s build.'"></button></span></div></div>
+          <div class="col-sm-6 col-xl-3"><div class="kc-stat-card" :class="builds.length ? (builds[0].ok ? 'kc-stat-card--primary' : 'kc-stat-card--danger') : ''"><span class="kc-stat-num" x-text="builds.length"></span><span class="kc-stat-label" x-text="'Builds' + (builds.length ? ' · latest ' + (builds[0].ok ? 'OK' : 'FAILED') : '')"></span></div></div>
+        </section>
+
+        <div class="row g-4">
+          <div class="col-lg-7">
+            <div class="kc-surface p-4 rounded-3 mb-4">
+              <h2 class="kc-section-title">Build settings <button x-help="'Passed to the merge engine when you press Build. Saved per profile.'"></button></h2>
+              <form class="row g-3" @submit.prevent="save()">
+                <div class="col-md-6"><label class="form-label">Name</label><input class="form-control" x-model="form.name" required></div>
+                <div class="col-md-6"><label class="form-label">Target Sysmon version <button x-help="'The Sysmon binary the output will be loaded on. Sets <code>schemaversion</code> and decides which events and fields are allowed – newer ones are flagged (SYS204/SYS205) or removed, depending on the setting below.'"></button></label>
+                  <select class="form-select" x-model="form.sysmon_version"><template x-for="v in $store.app.sysmonVersions" :key="v"><option :value="v" x-text="`Sysmon ${v} → schema ${$store.app.schemaFor[v]}`"></option></template></select></div>
+                <div class="col-12"><label class="form-label">Description</label><input class="form-control" x-model="form.description"></div>
+                <div class="col-md-6"><label class="form-label">Events/fields unsupported by the target version <button x-help="'<strong>warn</strong>: keep them in the output and report a warning – the file may fail to load on the older binary. <strong>exclude</strong>: strip them so the file loads cleanly; an event filter that becomes empty is removed entirely.'"></button></label>
+                  <select class="form-select" x-model="form.unsupported"><option value="warn">Keep and warn (warn)</option><option value="exclude">Remove from output (exclude)</option></select></div>
+                <div class="col-md-6 d-flex flex-column justify-content-end gap-1">
+                  <div class="form-check"><input class="form-check-input" type="checkbox" id="analyze" x-model="form.analyze"><label class="form-check-label" for="analyze">Run analyzer (conflicts, performance) <button x-help="'Reports include/exclude rules that cancel each other, patterns that are expensive to evaluate, and recommendations such as exclusions by bare image name. Never fails the build.'"></button></label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" id="pc" x-model="form.preserve_comments"><label class="form-check-label" for="pc">Preserve XML comments <button x-help="'Keep the comments from the template and modules in the merged file. Off by default – the output is smaller and easier to diff.'"></button></label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" id="fo" x-model="form.force_grouprelation_or"><label class="form-check-label" for="fo">Force groupRelation="or" on all RuleGroups <button x-help="'Rewrites every RuleGroup to <code>groupRelation=&quot;or&quot;</code>. Only for legacy compatibility – it changes how conditions combine in groups that were written as <code>and</code>. Leave off unless you know you need it.'"></button></label></div>
+                </div>
+                <div class="col-12"><button class="btn btn-primary">Save settings</button></div>
+              </form>
+            </div>
+
+            <div class="kc-surface p-4 rounded-3 mb-4">
+              <h2 class="kc-section-title">Bulk selection <button x-help="'Selecting everything matches upstream\'s published <code>sysmonconfig.xml</code>. <em>Include modules only</em> keeps all detections but drops the noise exclusions; <em>exclude modules only</em> is useful as a base for a very verbose research profile.'"></button></h2>
+              <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-primary btn-sm" @click="$store.app.selectAll('all')">Select all modules</button>
+                <button class="btn btn-outline-primary btn-sm" @click="$store.app.selectAll('include')">Include modules only</button>
+                <button class="btn btn-outline-primary btn-sm" @click="$store.app.selectAll('exclude')">Exclude modules only</button>
+                <button class="btn btn-outline-danger btn-sm" @click="confirm('Deselect every module in this profile?') && $store.app.selectAll('none')">Deselect all</button>
+              </div>
+              <hr>
+              <h3 class="h6">Import an include/exclude list (upstream text format) <button x-help="'Plain text, one entry per line: a module path (<code>1_process_creation/include_foo.xml</code>) or a directory (selects every module in it). Lines starting with <code>#</code> are ignored. Same format as <code>0_custom_configuration/example_include_rules.txt</code> upstream.'"></button></h3>
+              <div class="row g-2 align-items-end">
+                <div class="col-md-7"><input class="form-control form-control-sm" type="file" accept=".txt" @change="importFile($event)"></div>
+                <div class="col-md-5"><select class="form-select form-select-sm" x-model="importMode"><option value="replace">Replace selection (include list)</option><option value="add">Add to selection</option><option value="exclude">Remove from selection (exclude list)</option></select></div>
+              </div>
+            </div>
+
+            <div class="kc-surface p-4 rounded-3 mb-4">
+              <h2 class="kc-section-title">Save / load everything</h2>
+              <p class="small text-muted">One JSON file with all profiles and all edited/custom modules. Import <em>replace</em> discards what is in this browser; <em>merge</em> adds and overwrites by name.</p>
+              <div class="d-flex flex-wrap gap-2 align-items-end">
+                <button class="btn btn-sm btn-primary" @click="$store.app.exportAll()">⬇ Export JSON</button>
+                <div class="d-flex gap-2 align-items-end ms-auto">
+                  <select class="form-select form-select-sm w-auto" x-model="stateImportMode"><option value="replace">replace</option><option value="merge">merge</option></select>
+                  <input class="form-control form-control-sm" type="file" accept=".json" @change="importState($event)">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-5">
+            <div class="kc-surface p-4 rounded-3 mb-4">
+              <h2 class="kc-section-title">Recent builds</h2>
+              <template x-if="builds.length"><div class="table-responsive"><table class="table table-sm kc-table mb-0"><thead><tr><th>Time</th><th>Status</th><th>Findings</th></tr></thead><tbody>
+                <template x-for="b in builds" :key="b.id"><tr><td><a :href="'#/build/' + b.id" x-text="b.id.replace('T', ' ')"></a></td><td><span class="kc-severity" :class="b.ok ? 'kc-severity-low' : 'kc-severity-high'" x-text="b.ok ? 'OK' : 'FAILED'"></span></td><td class="small" x-text="b.summary.error + ' errors · ' + b.summary.warning + ' warnings'"></td></tr></template>
+              </tbody></table></div></template>
+              <p class="text-muted mb-0" x-show="!builds.length">No builds yet. Press <strong>Build</strong>.</p>
+            </div>
+
+            <div class="kc-surface p-4 rounded-3 mb-4" id="new-profile">
+              <h2 class="kc-section-title">New profile <button x-help="'Copying from a profile duplicates its module selection and settings. Start empty when you want to build a minimal, allow-listed configuration from scratch.'"></button></h2>
+              <form class="row g-2" @submit.prevent="create()">
+                <div class="col-12"><input class="form-control" x-model="newName" placeholder="e.g. workstations-prod" required></div>
+                <div class="col-12"><select class="form-select" x-model="newMode"><option value="all">Start with all modules selected</option><option value="none">Start empty</option></select></div>
+                <div class="col-12"><select class="form-select" x-model="copyFrom"><option value="">— or copy from profile —</option><template x-for="p in $store.app.profiles" :key="p.slug"><option :value="p.slug" x-text="p.name"></option></template></select></div>
+                <div class="col-12"><button class="btn btn-primary">Create profile</button></div>
+              </form>
+              <template x-if="$store.app.profiles.length > 1"><div><hr><button class="btn btn-sm btn-outline-danger" @click="confirm(`Delete the profile ${$store.app.profile.name}? Overlay modules are kept.`) && ($store.app.deleteProfile($store.app.state.current), init())" x-text="`Delete profile “${$store.app.profile.name}”`"></button></div></template>
+            </div>
+
+            <div class="kc-surface p-4 rounded-3" x-show="$store.app.overlayRels.length">
+              <h2 class="kc-section-title">Custom / edited modules</h2>
+              <ul class="list-unstyled mb-0 vsm-overlay-list"><template x-for="f in $store.app.overlayRels" :key="f"><li><a :href="'#/m/' + f + '/edit'"><code x-text="f"></code></a></li></template></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ═══════════ CATEGORY ═══════════ -->
+    <template x-if="$store.app.route.page === 'category'">
+      <div x-data="pageCategory">
+        <template x-if="!cat"><p class="text-muted">Category not found.</p></template>
+        <template x-if="cat">
+          <div>
+            <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+              <div>
+                <span class="kc-section-tag">Event ID <span x-text="cat.event_ids.join(' / ')"></span> <button x-help="'Every module here filters this Sysmon event. <span class=\'kc-severity kc-severity-info\'>include</span> modules are detections – only matching events are logged. <span class=\'kc-severity kc-severity-medium\'>exclude</span> modules suppress known noise. <strong>Exclude always wins</strong> when both match, so keep exclusions narrow.'"></button></span>
+                <h1 class="kc-section-title mb-0" x-text="cat.label"></h1>
+                <div class="text-muted small"><code x-text="cat.dirname + '/'"></code> · <span x-text="cat.modules.filter(m => m.kind === 'include').length"></span> include · <span x-text="cat.modules.filter(m => m.kind === 'exclude').length"></span> exclude</div>
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-primary" @click="$store.app.selectCategory(cat.dirname, 'all')">Select all</button>
+                  <button class="btn btn-outline-primary" @click="$store.app.selectCategory(cat.dirname, 'include')">+ includes</button>
+                  <button class="btn btn-outline-primary" @click="$store.app.selectCategory(cat.dirname, 'exclude')">+ excludes</button>
+                  <button class="btn btn-outline-danger" @click="$store.app.selectCategory(cat.dirname, 'none')">Deselect all</button>
+                </div>
+                <a class="btn btn-sm btn-primary" :href="'#/new/' + cat.dirname" title="Create a custom module in this category (stored in the overlay, not upstream)">+ New module</a>
+              </div>
+            </div>
+            <div class="d-flex gap-2 mb-3 vsm-filter">
+              <input class="form-control form-control-sm" x-model="q" placeholder="Search file name, title or technique (e.g. T1059)…">
+              <select class="form-select form-select-sm w-auto" x-model="kind"><option value="">include + exclude</option><option value="include">include only</option><option value="exclude">exclude only</option></select>
+            </div>
+            <div class="vsm-cards">
+              <template x-for="m in modules" :key="m.rel + m.source">
+                <div class="kc-finding-card kc-finding-card--compact vsm-card" :class="[m.kind === 'exclude' ? 'kc-finding-card--warning' : 'kc-finding-card--accent', isOn(m.rel) ? '' : 'vsm-card-off']">
+                  <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div class="flex-grow-1 min-w-0">
+                      <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                        <span class="kc-severity" :class="m.kind === 'exclude' ? 'kc-severity-medium' : 'kc-severity-info'" :title="m.kind === 'exclude' ? 'Exclude module: suppresses matching events (noise reduction). Exclude wins over include.' : 'Include module: only matching events of this type are logged (detection).'" x-text="m.kind"></span>
+                        <span class="kc-tag kc-tag-green" x-show="m.source === 'edited'" title="Upstream module shadowed by your overlay copy">edited</span>
+                        <span class="kc-tag kc-tag-navy" x-show="m.source === 'custom'" title="Your own module – exists only in the overlay">custom</span>
+                        <span class="kc-tag kc-tag-red" x-show="m.error" :title="m.error">invalid XML</span>
+                        <code class="vsm-filename" x-text="m.filename"></code>
+                      </div>
+                      <div class="vsm-card-title" x-text="m.title"></div>
+                      <div class="d-flex flex-wrap gap-1 mt-1">
+                        <template x-for="et in m.event_types" :key="et"><span class="kc-tag" x-text="et"></span></template>
+                        <template x-for="t in m.techniques.slice(0, 6)" :key="t[0]"><span class="kc-tag kc-tag-blue" :title="t[1]" x-text="t[0]"></span></template>
+                        <span class="kc-tag" x-show="m.techniques.length > 6" x-text="'+' + (m.techniques.length - 6)"></span>
+                        <span class="kc-tag" title="Number of rules/conditions" x-text="m.rule_count + ' rules'"></span>
+                      </div>
+                    </div>
+                    <div class="d-flex flex-column align-items-end gap-2">
+                      <div class="form-check form-switch m-0"><input class="form-check-input vsm-switch" type="checkbox" role="switch" :checked="isOn(m.rel)" @change="$store.app.toggle(m.rel, $event.target.checked)" title="Include in build"></div>
+                      <div class="btn-group btn-group-sm">
+                        <a class="btn btn-outline-primary" :href="'#/m/' + m.rel + '/edit'" title="Open the rule editor">Edit</a>
+                        <a class="btn btn-outline-secondary" :href="'#/m/' + m.rel + '/raw'" title="Edit the raw XML">XML</a>
+                        <button class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                          <li><form class="px-3 py-2 d-flex gap-1" @submit.prevent="duplicate(m.rel)"><input class="form-control form-control-sm" x-model="dupName[m.rel]" placeholder="New name…" required><button class="btn btn-sm btn-primary">Duplicate</button></form></li>
+                          <template x-if="m.source !== 'upstream'"><li><hr class="dropdown-divider"><button class="dropdown-item text-danger" @click="revert(m)" x-text="m.source === 'custom' ? 'Delete module' : 'Reset to upstream'"></button></li></template>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <p class="text-muted" x-show="!modules.length">No modules match.</p>
+            </div>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <!-- ═══════════ NEW MODULE ═══════════ -->
+    <template x-if="$store.app.route.page === 'newModule'">
+      <div x-data="pageNewModule">
+        <span class="kc-section-tag" x-text="cat?.label"></span>
+        <h1 class="kc-section-title">New module</h1>
+        <div class="kc-surface p-4 rounded-3 vsm-narrow">
+          <form class="row g-3" @submit.prevent="create()">
+            <div class="col-12"><label class="form-label">Name (becomes the file name)</label><input class="form-control" x-model="name" placeholder="e.g. Our EDR exclusions" required>
+              <div class="form-text">Saved as <code x-text="$store.app.route.cat + '/' + kind + '_<name>.xml'"></code> in the overlay – upstream is never touched.</div></div>
+            <div class="col-md-6"><label class="form-label">Type <button x-help="'<strong>include</strong>: a detection – only events matching your rules are logged. <strong>exclude</strong>: noise suppression – matching events are dropped, and exclude wins over any include. The type becomes the file name prefix and the <code>onmatch</code> of the first event block.'"></button></label>
+              <select class="form-select" x-model="kind"><option value="include">include – log when the rule matches</option><option value="exclude">exclude – suppress when the rule matches</option></select></div>
+            <div class="col-md-6"><label class="form-label">Event type <button x-help="'The Sysmon event this module filters. It determines which fields are available in the rule editor. Usually the event of the category you are in; you can add more event blocks in the editor afterwards.'"></button></label>
+              <select class="form-select" x-model="eventType"><template x-for="et in Object.keys($store.app.fields.events)" :key="et"><option :value="et" x-text="et + ' (' + $store.app.fields.events[et].event_id + ')'"></option></template></select></div>
+            <div class="col-12 d-flex gap-2"><button class="btn btn-primary">Create and edit</button><a class="btn btn-outline-secondary" :href="'#/c/' + $store.app.route.cat">Cancel</a></div>
+          </form>
+        </div>
+      </div>
+    </template>
+
+    <!-- ═══════════ RULE EDITOR ═══════════ -->
+    <template x-if="$store.app.route.page === 'editor'">
+      <div x-data="pageEditor">
+        <template x-if="error"><p class="text-muted" x-text="error"></p></template>
+        <template x-if="model">
+          <div>
+            <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+              <div>
+                <span class="kc-section-tag"><a :href="'#/c/' + m.category" x-text="m.category"></a> · rule editor</span>
+                <h1 class="kc-section-title mb-0"><code x-text="m.filename"></code></h1>
+                <div class="small text-muted">Source: <span x-text="m.source"></span><span x-show="m.source === 'upstream'"> – saved as an overlay copy on first change</span> · XML comments are not preserved by the rule editor (use raw XML for that)</div>
+              </div>
+              <div class="d-flex gap-2 align-items-center">
+                <span class="kc-tag kc-tag-amber" x-show="dirty">unsaved changes</span>
+                <div class="btn-group btn-group-sm"><a class="btn btn-outline-secondary" :href="'#/m/' + m.rel + '/raw'">Raw XML</a><a class="btn btn-outline-secondary" :href="'#/c/' + m.category">Back</a></div>
+                <button class="btn btn-sm btn-primary px-3" @click="save(false)" :disabled="saving">Save</button>
+              </div>
+            </div>
+            <div class="kc-surface p-3 rounded-3 mb-3 d-flex gap-3 align-items-end flex-wrap">
+              <div><label class="form-label small mb-0">schemaversion <button x-help="'Configuration schema of this module file. The merged output uses the profile\'s target version instead, so this rarely needs changing.'"></button></label><input class="form-control form-control-sm vsm-w-7" x-model="model.schemaversion" @input="dirty=true"></div>
+              <button class="btn btn-sm btn-outline-primary" @click="addGroup()">+ RuleGroup</button>
+              <span class="text-muted small ms-auto">Hierarchy: RuleGroup → event (include/exclude) → Rule (and/or) → conditions <button x-help="'Each condition is <em>field · operator · value</em>. Fields depend on the event type. Operators: <code>is</code>, <code>contains</code>, <code>begin with</code>, <code>end with</code>, their negations, the multi-value <code>… any/all</code> forms (values separated by <code>;</code>) and <code>image</code>, which matches a process by full path or file name. All matching is case-insensitive. See Help → Condition operators.'"></button></span>
+            </div>
+            <template x-for="(rg, gi) in model.rulegroups" :key="gi">
+              <section class="kc-surface rounded-3 mb-4 vsm-group">
+                <header class="vsm-group-head d-flex gap-2 align-items-center flex-wrap">
+                  <span class="kc-tag kc-tag-navy">RuleGroup <button x-help="'Top-level container. <code>or</code> (default): the group matches if any rule or condition inside matches. <code>and</code>: all bare conditions must match. The name is informational; sysmon-modular puts the ATT&amp;CK tag here when the whole group covers one technique.'"></button></span>
+                  <input class="form-control form-control-sm flex-grow-1" placeholder="Name (e.g. technique_id=T1059,technique_name=Command and Scripting Interpreter)" x-model="rg.name" @input="dirty=true">
+                  <select class="form-select form-select-sm w-auto" x-model="rg.group_relation" @change="dirty=true"><option value="or">or</option><option value="and">and</option></select>
+                  <button class="btn btn-sm btn-outline-primary" @click="addEvent(rg)">+ Event</button>
+                  <button class="btn btn-sm btn-outline-danger" @click="if (confirm('Remove the entire RuleGroup?')) { model.rulegroups.splice(gi, 1); dirty = true }">✕</button>
+                </header>
+                <template x-for="(ev, ei) in rg.events" :key="ei">
+                  <div class="vsm-event">
+                    <div class="d-flex gap-2 align-items-center flex-wrap mb-2">
+                      <select class="form-select form-select-sm w-auto fw-bold" x-model="ev.event_type" x-effect="$nextTick(() => $el.value = ev.event_type)" @change="dirty=true"><template x-for="et in eventTypes" :key="et"><option :value="et" x-text="et + ' (' + schema.events[et].event_id + ')'"></option></template></select>
+                      <select class="form-select form-select-sm w-auto" x-model="ev.onmatch" @change="dirty=true"><option value="include">onmatch=include</option><option value="exclude">onmatch=exclude</option></select><button x-help="'<strong>include</strong>: only events matching a rule are logged. <strong>exclude</strong>: matching events are dropped. If an event matches both an include and an exclude rule anywhere in the configuration, <strong>exclude wins</strong>.'"></button>
+                      <span class="text-muted small" x-text="ev.rules.length + ' rules · ' + ev.conditions.length + ' bare conditions'"></span>
+                      <div class="ms-auto d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-primary" @click="ev.rules.push(newRule()); dirty=true">+ Rule</button>
+                        <button class="btn btn-sm btn-outline-secondary" @click="ev.conditions.push(newCond(ev)); dirty=true">+ bare condition</button>
+                        <button class="btn btn-sm btn-outline-danger" @click="if (confirm('Remove this event block?')) { rg.events.splice(ei, 1); dirty = true }">✕</button>
+                      </div>
+                    </div>
+                    <template x-if="ev.conditions.length">
+                      <div class="vsm-rule vsm-rule--bare">
+                        <div class="small text-muted mb-1">Bare conditions (directly under the event – each matched on its own) <button x-help="'Conditions without a Rule wrapper. Sysmon combines them with the RuleGroup\'s groupRelation (<code>or</code>: any matches). With no groupRelation, same-field conditions are OR-ed and different fields AND-ed.'"></button></div>
+                        <template x-for="(c, ci) in ev.conditions" :key="ci">
+                          <div class="vsm-cond">
+                            <select class="form-select form-select-sm" x-model="c.field" x-effect="$nextTick(() => $el.value = c.field)" @change="dirty=true"><template x-for="f in fieldsFor(ev)" :key="f"><option :value="f" x-text="f"></option></template></select>
+                            <select class="form-select form-select-sm" x-model="c.condition" x-effect="$nextTick(() => $el.value = c.condition)" @change="dirty=true"><template x-for="op in schema.conditions" :key="op"><option :value="op" x-text="op"></option></template></select>
+                            <input class="form-control form-control-sm font-monospace" x-model="c.value" @input="dirty=true" :placeholder="isMulti(c) ? 'value1;value2' : 'value'">
+                            <input class="form-control form-control-sm" x-model="c.name" @input="dirty=true" placeholder="name (optional)">
+                            <button class="btn btn-sm btn-outline-danger" @click="ev.conditions.splice(ci, 1); dirty=true">✕</button>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                    <template x-for="(r, ri) in ev.rules" :key="ri">
+                      <div class="vsm-rule">
+                        <div class="d-flex gap-2 align-items-center flex-wrap mb-1">
+                          <span class="kc-tag">Rule <template x-if="ri === 0"><button x-help="'Groups conditions into one match. <code>and</code>: every condition must be true (e.g. Image <em>and</em> CommandLine). <code>or</code>: any one. The name is written to the event\'s <code>RuleName</code> field – keep the <code>technique_id=…,technique_name=…</code> format so coverage reports work.'"></button></template></span>
+                          <input class="form-control form-control-sm flex-grow-1" x-model="r.name" @input="dirty=true" placeholder="technique_id=T1234,technique_name=…">
+                          <select class="form-select form-select-sm w-auto" x-model="r.group_relation" @change="dirty=true"><option value="and">and</option><option value="or">or</option></select>
+                          <button class="btn btn-sm btn-outline-secondary" @click="r.conditions.push(newCond(ev)); dirty=true">+ condition</button>
+                          <button class="btn btn-sm btn-outline-secondary" @click="ev.rules.splice(ri + 1, 0, JSON.parse(JSON.stringify(r))); dirty=true" title="Duplicate rule">⧉</button>
+                          <button class="btn btn-sm btn-outline-danger" @click="ev.rules.splice(ri, 1); dirty=true">✕</button>
+                        </div>
+                        <template x-for="(c, ci) in r.conditions" :key="ci">
+                          <div class="vsm-cond">
+                            <select class="form-select form-select-sm" x-model="c.field" x-effect="$nextTick(() => $el.value = c.field)" @change="dirty=true"><template x-for="f in fieldsFor(ev)" :key="f"><option :value="f" x-text="f"></option></template></select>
+                            <select class="form-select form-select-sm" x-model="c.condition" x-effect="$nextTick(() => $el.value = c.condition)" @change="dirty=true"><template x-for="op in schema.conditions" :key="op"><option :value="op" x-text="op"></option></template></select>
+                            <input class="form-control form-control-sm font-monospace" x-model="c.value" @input="dirty=true" :placeholder="isMulti(c) ? 'value1;value2' : 'value'">
+                            <input class="form-control form-control-sm" x-model="c.name" @input="dirty=true" placeholder="name (optional)">
+                            <button class="btn btn-sm btn-outline-danger" @click="r.conditions.splice(ci, 1); dirty=true">✕</button>
+                          </div>
+                        </template>
+                        <div class="text-muted small" x-show="!r.conditions.length">No conditions – this rule matches nothing. Add at least one.</div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+                <div class="text-muted small p-3" x-show="!rg.events.length">No events in this RuleGroup.</div>
+              </section>
+            </template>
+            <div class="d-flex gap-2 align-items-center mb-3">
+              <button class="btn btn-primary px-3" @click="save(false)" :disabled="saving">Save</button>
+              <button class="btn btn-outline-warning" x-show="hasErrors" @click="save(true)">Save anyway (ignore errors)</button>
+              <span class="text-muted small" x-show="saving">Validating with sysmon-modular…</span>
+              <span class="text-success small" x-show="status" x-text="status"></span>
+            </div>
+            <div class="mb-4" x-html="findingsHtml()"></div>
+            <details class="mb-4" x-show="xmlPreview"><summary class="small text-muted">Show generated XML</summary><pre class="vsm-xml-view mt-2" x-xml="xmlPreview"></pre></details>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <!-- ═══════════ RAW XML ═══════════ -->
+    <template x-if="$store.app.route.page === 'raw'">
+      <div x-data="pageRaw">
+        <template x-if="!m"><p class="text-muted">Module not found.</p></template>
+        <template x-if="m">
+          <div>
+            <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+              <div>
+                <span class="kc-section-tag"><a :href="'#/c/' + m.category" x-text="m.category"></a> · raw XML</span>
+                <h1 class="kc-section-title mb-0"><code x-text="m.filename"></code></h1>
+                <div class="small text-muted">Source: <span x-text="m.source"></span><span x-show="m.source === 'upstream'"> – saved as an overlay copy on first change</span></div>
+              </div>
+              <div class="btn-group btn-group-sm"><a class="btn btn-outline-primary" :href="'#/m/' + m.rel + '/edit'">Rule editor</a><a class="btn btn-outline-secondary" :href="'#/c/' + m.category">Back</a></div>
+            </div>
+            <div class="kc-callout kc-callout--danger" x-show="parseError"><span class="kc-callout-icon">✖</span><div><div class="kc-callout-title">XML cannot be parsed</div><p class="kc-callout-body mb-0" x-text="parseError"></p></div></div>
+            <textarea class="vsm-xml-editor" spellcheck="false" autocomplete="off" x-model="xml"></textarea>
+            <div class="d-flex gap-2 mt-3 align-items-center flex-wrap">
+              <button class="btn btn-primary" @click="save()" :disabled="busy">Save</button>
+              <button class="btn btn-outline-secondary" @click="validate()" :disabled="busy">Validate</button>
+              <label class="form-check ms-2"><input class="form-check-input" type="checkbox" x-model="force"> <span class="form-check-label">Save anyway (ignore errors)</span></label> <button x-help="'Writes the module even if validation reports errors. The build will still validate it, so use this only for work in progress. Malformed XML that cannot be parsed at all is never merged.'"></button>
+              <span class="text-muted small ms-auto">Validation uses upstream's validator (target Sysmon <span x-text="$store.app.profile.sysmon_version"></span>)</span>
+            </div>
+            <div class="mt-2 small" :class="msg.startsWith('Saved') ? 'text-success' : 'text-danger'" x-text="msg"></div>
+            <div class="mt-3" x-html="findingsHtml()"></div>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <!-- ═══════════ BUILDS LIST ═══════════ -->
+    <template x-if="$store.app.route.page === 'builds'">
+      <div>
+        <div class="d-flex justify-content-between align-items-end mb-3">
+          <div><span class="kc-section-tag">Profile <span x-text="$store.app.profile.name"></span></span><h1 class="kc-section-title mb-0">Build history</h1></div>
+          <button class="btn btn-sm btn-primary" @click="$store.app.runBuild()">▶ Build now</button>
+        </div>
+        <p class="text-muted" x-show="!$store.app.buildsFor($store.app.state.current).length">No builds yet.</p>
+        <div class="kc-surface rounded-3 p-3" x-show="$store.app.buildsFor($store.app.state.current).length">
+          <div class="table-responsive"><table class="table kc-table mb-0">
+            <thead><tr><th>Build</th><th>Status</th><th>Sysmon</th><th>Modules</th><th>Errors</th><th>Warn.</th><th>Perf.</th><th>Recom.</th><th>Size</th></tr></thead>
+            <tbody><template x-for="b in $store.app.buildsFor($store.app.state.current)" :key="b.id">
+              <tr><td><a :href="'#/build/' + b.id" x-text="b.id.replace('T', ' ')"></a></td>
+                <td><span class="kc-severity" :class="b.ok ? 'kc-severity-low' : 'kc-severity-high'" x-text="b.ok ? 'OK' : 'FAILED'"></span></td>
+                <td x-text="b.sysmon_version + ' / ' + b.schemaversion"></td><td x-text="b.module_count"></td>
+                <td x-text="b.summary.error"></td><td x-text="b.summary.warning"></td><td x-text="b.summary.performance"></td><td x-text="b.summary.recommendation"></td>
+                <td x-text="(b.output_size / 1024).toFixed(1) + ' KB'"></td></tr>
+            </template></tbody></table></div>
+          <p class="small text-muted mb-0 mt-2">The last 10 builds per profile are kept in this browser.</p>
+        </div>
+      </div>
+    </template>
+
+    <!-- ═══════════ BUILD RESULT ═══════════ -->
+    <template x-if="$store.app.route.page === 'build'">
+      <div x-data="pageBuild">
+        <template x-if="!b"><p class="text-muted">Build not found.</p></template>
+        <template x-if="b">
+          <div>
+            <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+              <div>
+                <span class="kc-section-tag"><a href="#/builds">Builds</a> · <span x-text="b.profile_name"></span></span>
+                <h1 class="kc-section-title mb-0">Build <span x-text="b.id.replace('T', ' ')"></span> <span class="kc-severity align-middle" :class="b.ok ? 'kc-severity-low' : 'kc-severity-high'" x-text="b.ok ? 'OK' : 'FAILED'"></span></h1>
+                <div class="text-muted small" x-text="`Sysmon ${b.sysmon_version} · schema ${b.schemaversion} · ${b.module_count} modules → ${b.group_count} RuleGroups · ${(b.output_size / 1024).toFixed(1)} KB · upstream ${b.upstream}`"></div>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-primary" x-show="b.ok" @click="download()">⬇ Download sysmonconfig.xml</button>
+                <button class="btn btn-outline-secondary" @click="$store.app.exportList()">include_rules.txt</button>
+                <button class="btn btn-outline-primary" @click="$store.app.runBuild()">▶ Build again</button>
+              </div>
+            </div>
+            <div class="kc-callout kc-callout--danger mb-3" x-show="b.error"><span class="kc-callout-icon">✖</span><div><p class="kc-callout-body mb-0" x-text="b.error"></p></div></div>
+            <section class="row g-3 mb-4">
+              <div class="col-6 col-xl-3"><div class="kc-stat-card" :class="b.summary.error ? 'kc-stat-card--danger' : ''"><span class="kc-stat-num" x-text="b.summary.error"></span><span class="kc-stat-label">Errors</span></div></div>
+              <div class="col-6 col-xl-3"><div class="kc-stat-card" :class="b.summary.warning ? 'kc-stat-card--warning' : ''"><span class="kc-stat-num" x-text="b.summary.warning"></span><span class="kc-stat-label">Warnings</span></div></div>
+              <div class="col-6 col-xl-3"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num" x-text="b.summary.performance"></span><span class="kc-stat-label">Performance findings</span></div></div>
+              <div class="col-6 col-xl-3"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num" x-text="b.summary.recommendation"></span><span class="kc-stat-label">Recommendations</span></div></div>
+            </section>
+            <ul class="nav nav-tabs mb-3">
+              <li class="nav-item"><button class="nav-link" :class="{ active: tab === 'findings' }" @click="tab = 'findings'" x-text="'Findings (' + b.findings.length + ')'"></button></li>
+              <li class="nav-item align-self-center"><button x-help="'<strong>Errors</strong> fail the build (invalid XML, unknown fields, bad ATT&amp;CK metadata). <strong>Warnings</strong> mean the file works but something is off – typically events/fields the target Sysmon version does not support. <strong>Performance</strong> and <strong>recommendations</strong> come from the analyzer and are advisory. <strong>Coverage</strong> counts conditions and ATT&amp;CK techniques per event; <strong>Diff</strong> compares rule meaning with an earlier build, ignoring formatting.'"></button></li>
+              <li class="nav-item" x-show="matrix"><button class="nav-link" :class="{ active: tab === 'coverage' }" @click="tab = 'coverage'">Coverage</button></li>
+              <li class="nav-item"><button class="nav-link" :class="{ active: tab === 'diff' }" @click="tab = 'diff'">Diff</button></li>
+              <li class="nav-item"><button class="nav-link" :class="{ active: tab === 'log' }" @click="tab = 'log'">Log</button></li>
+              <li class="nav-item" x-show="b.ok"><button class="nav-link" :class="{ active: tab === 'xml' }" @click="tab = 'xml'; loadXml()">XML</button></li>
+            </ul>
+            <div x-show="tab === 'findings'">
+              <div class="kc-callout kc-callout--success" x-show="!b.findings.length"><span class="kc-callout-icon">✓</span><div><p class="kc-callout-body mb-0">No findings. The configuration validates cleanly.</p></div></div>
+              <template x-for="sev in ['error','warning','performance','recommendation','info']" :key="sev">
+                <details class="mb-3" x-show="grouped[sev].length" :open="sev === 'error' || sev === 'warning'"><summary class="fw-bold" x-text="sevLabel(sev) + ' (' + grouped[sev].length + ')'"></summary><div class="mt-2" x-html="findingsHtml(grouped[sev])"></div></details>
+              </template>
+            </div>
+            <div x-show="tab === 'coverage'"><template x-if="matrix"><div>
+              <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num" x-text="matrix.include"></span><span class="kc-stat-label">include conditions</span></div></div>
+                <div class="col-6 col-md-3"><div class="kc-stat-card kc-stat-card--warning"><span class="kc-stat-num" x-text="matrix.exclude"></span><span class="kc-stat-label">exclude conditions</span></div></div>
+                <div class="col-6 col-md-3"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num" x-text="matrix.technique_total"></span><span class="kc-stat-label">ATT&amp;CK techniques</span></div></div>
+                <div class="col-6 col-md-3"><div class="kc-stat-card"><span class="kc-stat-num" x-text="matrix.events.length"></span><span class="kc-stat-label">Event types</span></div></div>
+              </div>
+              <div x-data="attackMatrix" x-include="'tpl-matrix'"></div>
+            </div></template></div>
+            <div x-show="tab === 'diff'">
+              <div class="d-flex gap-2 align-items-center mb-3">
+                <label class="small text-muted">Compare with build:</label>
+                <select class="form-select form-select-sm w-auto" x-model="diffBefore"><template x-for="o in others" :key="o.id"><option :value="o.id" x-text="o.id.replace('T', ' ')"></option></template></select>
+                <button class="btn btn-sm btn-outline-primary" :disabled="!others.length" @click="runDiff()">Show diff</button>
+              </div>
+              <div x-html="diffHtml"></div>
+              <p class="text-muted" x-show="!others.length && !diffHtml">No earlier successful build to compare with.</p>
+            </div>
+            <div x-show="tab === 'log'"><pre class="kc-code vsm-pre" x-text="log()"></pre></div>
+            <div x-show="tab === 'xml'"><pre class="vsm-xml-view vsm-xml-view--auto" x-xml="xml || ''"></pre></div>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <!-- ═══════════ COVERAGE (live) ═══════════ -->
+    <template x-if="$store.app.route.page === 'coverage'">
+      <div x-data="pageCoverage">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+          <div>
+            <span class="kc-section-tag">Profile <span x-text="$store.app.profile.name"></span> · current selection</span>
+            <h1 class="kc-section-title mb-0">ATT&amp;CK coverage <button x-help="'Computed live from the <strong>currently selected</strong> modules (no build needed). Only rules that carry <code>technique_id=…</code> metadata count – a technique is covered when at least one selected include rule is tagged with it. This is telemetry coverage (Sysmon will log matching activity), not detection quality.'"></button></h1>
+            <div class="text-muted small"><span x-text="$store.app.selected.size"></span> modules selected · techniques and tactics from the ATT&amp;CK table embedded in upstream's tooling</div>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <div class="btn-group btn-group-sm"><button class="btn btn-outline-primary" @click="navigator('19')" title="Layer for ATT&CK Navigator (ATT&CK 19)">⬇ Navigator layer (v19)</button><button class="btn btn-outline-primary" @click="navigator('18')" title="Layer remapped to ATT&CK 18 – use this if the hosted Navigator cannot load v19 layers">v18</button></div>
+            <button class="btn btn-sm btn-outline-secondary" @click="json()" title="Raw coverage JSON">JSON</button>
+          </div>
+        </div>
+        <p class="text-muted" x-show="loading">Computing coverage…</p>
+        <div class="kc-callout kc-callout--warning" x-show="error"><span class="kc-callout-icon">⚠</span><div><p class="kc-callout-body mb-0" x-text="error"></p></div></div>
+        <template x-if="matrix">
+          <div>
+            <section class="row g-3 mb-3">
+              <div class="col-6 col-xl-2"><div class="kc-stat-card kc-stat-card--primary"><span class="kc-stat-num" x-text="matrix.technique_total"></span><span class="kc-stat-label">Techniques <button x-help="'Distinct technique IDs (parents and sub-techniques) referenced by at least one selected rule.'"></button></span></div></div>
+              <div class="col-6 col-xl-2"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num" x-text="matrix.parent_total"></span><span class="kc-stat-label">Parent techniques</span></div></div>
+              <div class="col-6 col-xl-2"><div class="kc-stat-card kc-stat-card--accent"><span class="kc-stat-num" x-text="matrix.tactic_total"></span><span class="kc-stat-label">Tactics</span></div></div>
+              <div class="col-6 col-xl-2"><div class="kc-stat-card" :class="tagging.pct < 60 ? 'kc-stat-card--warning' : 'kc-stat-card--primary'"><span class="kc-stat-num" x-text="tagging.pct + '%'"></span><span class="kc-stat-label">Include rules tagged <button x-help="'Share of selected <em>include</em> rules that carry ATT&amp;CK metadata (a tag on the RuleGroup counts for all rules inside it). Untagged rules still log events – they just do not show up in coverage.'"></button></span></div></div>
+              <div class="col-6 col-xl-2"><div class="kc-stat-card"><span class="kc-stat-num" x-text="tagging.tagged"></span><span class="kc-stat-label">Tagged rules</span></div></div>
+              <div class="col-6 col-xl-2"><div class="kc-stat-card" :class="tagging.untagged ? 'kc-stat-card--warning' : ''"><span class="kc-stat-num" x-text="tagging.untagged"></span><span class="kc-stat-label">Untagged rules</span></div></div>
+            </section>
+            <div class="kc-surface rounded-3 p-3 mb-4"><div x-data="attackMatrix" x-include="'tpl-matrix'"></div></div>
+            <div class="row g-4">
+              <div class="col-lg-6"><div class="kc-surface rounded-3 p-3"><h2 class="kc-section-title">Per Sysmon event</h2>
+                <div class="table-responsive"><table class="table table-sm kc-table mb-0"><thead><tr><th>Event</th><th>include</th><th>exclude</th><th>modules</th></tr></thead><tbody><template x-for="e in matrix.events" :key="e.name"><tr><td x-text="e.name"></td><td x-text="e.include"></td><td x-text="e.exclude"></td><td x-text="e.modules.length"></td></tr></template></tbody></table></div></div></div>
+              <div class="col-lg-6"><div class="kc-surface rounded-3 p-3"><h2 class="kc-section-title">Include modules with untagged rules <button x-help="'These selected modules contain include rules without <code>technique_id</code> metadata. Add a tag in the rule editor (Rule name or RuleGroup name) to make them count.'"></button></h2>
+                <ul class="list-unstyled mb-0 vsm-overlay-list vsm-scroll" x-show="tagging.untagged_modules.length"><template x-for="[rel, n] in tagging.untagged_modules" :key="rel"><li><a :href="'#/m/' + rel + '/edit'"><code x-text="rel"></code></a> <span class="kc-tag" x-text="n"></span></li></template></ul>
+                <p class="text-muted mb-0" x-show="!tagging.untagged_modules.length">Every selected include rule is tagged.</p></div></div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <!-- ═══════════ HELP ═══════════ -->
+    <template x-if="$store.app.route.page === 'help'">
+      <div id="help-root" x-init="fetch('help.html').then(r => r.text()).then(h => { $el.innerHTML = h; window.vsmXml.init($el) })"></div>
+    </template>
+  </main>
+</div>
+
+<footer class="vsm-footer text-muted small">
+  <span x-text="$store.app.title"></span> · runs entirely in your browser (upstream tooling compiled to WebAssembly) ·
+  upstream <a :href="$store.app.upstream.commit_url" target="_blank" rel="noopener"><code x-text="$store.app.upstream.short"></code></a> (<span x-text="$store.app.upstream.date"></span>) ·
+  <a href="https://github.com/olafhartong/sysmon-modular" target="_blank" rel="noopener">olafhartong/sysmon-modular</a>
+</footer>
+
+<div class="vsm-busy" x-show="$store.app.busy" x-cloak><div class="kc-surface rounded-3 p-4 d-flex align-items-center gap-3"><span class="spinner-border text-primary"></span><span x-text="$store.app.busy"></span></div></div>
+</div>
+</template>
+
+<!-- Shared ATT&CK matrix markup. Expects `matrix` (attack.buildMatrix) from the enclosing component. -->
+<template id="tpl-matrix">
+  <div class="vsm-matrix-wrap">
+    <div class="d-flex gap-2 align-items-center flex-wrap mb-2">
+      <input class="form-control form-control-sm vsm-matrix-search" placeholder="Filter techniques (ID, name or module)…" x-model="q">
+      <label class="form-check form-check-inline small mb-0"><input class="form-check-input" type="checkbox" x-model="showSubs"> <span class="form-check-label">Show sub-techniques</span></label>
+      <span class="ms-auto d-flex align-items-center gap-1 small text-muted">Rules per technique: <span class="vsm-cell-swatch vsm-lvl-1"></span>1 <span class="vsm-cell-swatch vsm-lvl-2"></span>2–4 <span class="vsm-cell-swatch vsm-lvl-3"></span>5–9 <span class="vsm-cell-swatch vsm-lvl-4"></span>10+</span>
+    </div>
+    <div class="vsm-matrix">
+      <template x-for="col in matrix.columns" :key="col.tactic">
+        <div class="vsm-tactic">
+          <div class="vsm-tactic-head"><div class="vsm-tactic-name" x-text="col.label"></div><div class="vsm-tactic-meta" x-text="col.technique_count + ' techniques · ' + col.hits + ' rules'"></div></div>
+          <template x-for="t in col.techniques" :key="t.id">
+            <div class="vsm-tech" :class="['vsm-lvl-' + t.level, t.direct ? '' : 'vsm-tech-parent-only', sel === t.id ? 'vsm-tech-active' : '']" x-show="matches(t)" @click="select(t.id)" :title="t.id + ' ' + t.name + ' · ' + t.total + ' rules in ' + t.module_count + ' modules'">
+              <span class="vsm-tech-id" x-text="t.id"></span><span class="vsm-tech-name" x-text="t.name"></span><span class="vsm-tech-count" x-text="t.total"></span>
+              <div class="vsm-subs" x-show="showSubs && t.subs.length">
+                <template x-for="s in t.subs" :key="s.id">
+                  <div class="vsm-sub" :class="{ 'vsm-tech-active': sel === s.id }" @click.stop="select(s.id)" :title="s.id + ' ' + s.name + ' · ' + s.count + ' rules'">
+                    <span class="vsm-tech-id" x-text="'.' + s.id.split('.')[1]"></span> <span class="vsm-tech-name" x-text="s.name.split(':').pop().trim()"></span> <span class="vsm-tech-count" x-text="s.count"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+    <div class="vsm-tech-detail kc-surface rounded-3 p-3 mt-3" x-show="sel" x-cloak>
+      <template x-if="current(matrix)">
+        <div>
+          <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+            <a :href="'https://attack.mitre.org/techniques/' + sel.replace('.', '/') + '/'" target="_blank" rel="noopener" class="kc-tag kc-tag-blue" x-text="sel"></a>
+            <strong x-text="current(matrix).name"></strong>
+            <span class="text-muted small" x-text="(current(matrix).tactics || []).join(', ')"></span>
+            <span class="kc-tag" x-text="current(matrix).count + ' tagged rules'"></span>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" @click="sel = null">✕</button>
+          </div>
+          <div class="small text-muted mb-1">Modules referencing this technique (click to open the rule editor):</div>
+          <ul class="list-unstyled mb-0 vsm-overlay-list"><template x-for="m in current(matrix).modules" :key="m"><li><a :href="'#/m/' + m + '/edit'"><code x-text="m"></code></a></li></template></ul>
+        </div>
+      </template>
+    </div>
+  </div>
+</template>
+</body>
+</html>

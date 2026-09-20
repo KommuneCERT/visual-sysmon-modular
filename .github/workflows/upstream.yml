@@ -1,0 +1,39 @@
+name: Bump sysmon-modular
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: true }
+      - name: Update submodule to upstream HEAD
+        id: bump
+        run: |
+          old=$(git -C vendor/sysmon-modular rev-parse HEAD)
+          git submodule update --remote vendor/sysmon-modular
+          new=$(git -C vendor/sysmon-modular rev-parse HEAD)
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          echo "changed=$([ "$old" != "$new" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "date=$(git -C vendor/sysmon-modular log -1 --format=%cs)" >> "$GITHUB_OUTPUT"
+      - uses: peter-evans/create-pull-request@v7
+        if: steps.bump.outputs.changed == 'true'
+        with:
+          branch: bump/sysmon-modular
+          title: "Bump sysmon-modular to ${{ steps.bump.outputs.new }}"
+          commit-message: "Bump sysmon-modular submodule to ${{ steps.bump.outputs.new }}"
+          body: |
+            Weekly upstream update of `vendor/sysmon-modular`.
+
+            `${{ steps.bump.outputs.old }}` → `${{ steps.bump.outputs.new }}` (${{ steps.bump.outputs.date }})
+
+            Compare: https://github.com/olafhartong/sysmon-modular/compare/${{ steps.bump.outputs.old }}...${{ steps.bump.outputs.new }}
+
+            CI builds the site and runs the WASM smoke test against the new modules. Merging deploys to GitHub Pages.
+          labels: upstream
