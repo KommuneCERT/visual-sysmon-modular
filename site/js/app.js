@@ -1,22 +1,21 @@
-// Visual Sysmon Modular – static SPA. Alpine store + page components.
+// Visual Sysmon Modular – static, search-first SPA. Alpine store + page components.
 import { Catalog, slugify as moduleSlug, validRel, kindOf } from "./catalog.js";
-import { parseModule, toXml, emptyModule, isWellFormed, escapeXml } from "./model.js";
+import { parseModule, toXml, emptyModule, isWellFormed } from "./model.js";
 import * as S from "./state.js";
 import { engine, engineStatus, onEngineStatus } from "./engine.js";
 import { search } from "./search.js";
 import { buildMatrix, ruleTagging } from "./attack.js";
 import { parseList, formatList } from "./includelist.js";
-import { describeModule, describeRule, describeBare, describeHit } from "./describe.js";
-import { checklist, volumeOf, costOf, costTags } from "./checks.js";
+import { describeRule, describeBare, describeHit } from "./describe.js";
+import { checklist, costOf, costTags } from "./checks.js";
 
 export const APP_TITLE = "Visual Sysmon Modular";
 const SEVERITY_ORDER = ["error", "warning", "performance", "recommendation", "info"];
-const SEV_LABEL = { error: "Errors", warning: "Warnings", performance: "Performance", recommendation: "Recommendations", info: "Info" };
 
 // Non-reactive globals (large / immutable). The reactive store only holds user state.
-export const vsm = { catalog: null, fields: null, upstream: null, attack: null, examples: {} };
+export const vsm = { catalog: null, fields: null, upstream: null, attack: null, attackById: {} };
 
-// ── boot: fetch data before Alpine starts ────────────────────────────────────
+// ── boot: fetch data, then start Alpine ──────────────────────────────────────
 async function boot() {
   const [catalogData, fields, upstream, attack] = await Promise.all(
     ["data/catalog.json", "data/fields.json", "data/upstream.json", "data/attack.json"].map(u => fetch(u).then(r => { if (!r.ok) throw new Error(`${u}: ${r.status}`); return r.json(); })));
@@ -27,12 +26,16 @@ async function boot() {
   vsm.fields = fields;
   vsm.upstream = upstream;
   S.ensureDefault(state, vsm.catalog);
-  for (const p of Object.values(state.profiles)) S.normalizeProfile(p, vsm.catalog);
+  // single implicit configuration: whatever profile is current becomes "the" configuration
+  if (state.current !== "default" && state.profiles[state.current]) { state.profiles.default = { ...state.profiles[state.current], slug: "default" }; }
+  state.current = "default";
+  for (const slug of Object.keys(state.profiles)) if (slug !== "default") delete state.profiles[slug];
+  delete state.builds;
+  S.normalizeProfile(state.profiles.default, vsm.catalog);
   S.saveState(state);
   return state;
 }
 
-// Alpine 3 auto-starts when its script runs, so it is injected only after the data is loaded.
 boot().then(state => {
   window.__vsmInitialState = state;
   const s = document.createElement("script");
@@ -73,17 +76,6 @@ export function renderFindings(findings, { compact = true, summary = null, exitL
   return html + "</div>";
 }
 
-export function renderDiff(diff, beforeId, afterId) {
-  if (!diff || !diff.changes || !diff.changes.length) return `<div class="kc-callout kc-callout--success"><span class="kc-callout-icon">✓</span><div><p class="kc-callout-body mb-0">No semantic changes compared to build ${esc(beforeId)}.</p></div></div>`;
-  let html = '<div class="d-flex gap-2 flex-wrap mb-2">';
-  for (const [k, v] of Object.entries(diff.summary || {})) html += `<span class="kc-tag ${k.includes("added") ? "kc-tag-green" : k.includes("removed") ? "kc-tag-red" : ""}">${esc(k)}: ${v}</span>`;
-  html += `<span class="text-muted small ms-auto">before: ${esc(beforeId)} → after: ${esc(afterId)}</span></div><div class="table-responsive"><table class="table table-sm kc-table"><thead><tr><th>Change</th><th>Impact</th><th>Event / technique</th><th>Detail</th></tr></thead><tbody>`;
-  for (const c of diff.changes) {
-    const what = c.rule ? `${esc(c.rule.name)} <span class="kc-tag">${esc(c.rule.onmatch)}</span>${(c.rule.techniques || []).map(t => ` <span class="kc-tag kc-tag-blue">${esc(t)}</span>`).join("")}` : c.technique ? `<span class="kc-tag kc-tag-blue">${esc(c.technique)}</span>` : "";
-    html += `<tr><td><span class="kc-severity ${c.kind.includes("added") ? "kc-severity-low" : "kc-severity-high"}">${esc(c.kind)}</span></td><td class="small">${esc(c.impact)}</td><td class="small">${what}</td><td class="small font-monospace vsm-wrap">${esc(c.detail)}</td></tr>`;
-  }
-  return html + "</tbody></table></div>";
-}
 
 // ── Alpine registration ──────────────────────────────────────────────────────
 document.addEventListener("alpine:init", () => {
@@ -137,38 +129,30 @@ document.addEventListener("alpine:init", () => {
     tick: 0,                       // bumped when overlay changes (catalog is non-reactive)
     engine: { state: engineStatus.state, error: "" },
     flash: "",
-    busy: "",                      // text while building / loading engine
-    sysmonVersions: S.SYSMON_VERSIONS,
+    busy: "",
+    lastQuery: "",
+    dl: null,                      // result of the last merge for the download modal
+    importMode: "replace",
     sysmonTargets: S.SYSMON_TARGETS,
     schemaFor: S.SCHEMA_FOR_VERSION,
     get upstream() { return vsm.upstream; },
     get catalog() { return vsm.catalog; },
     get fields() { return vsm.fields; },
-    get profile() { return this.state.profiles[this.state.current]; },
-    get profiles() { return Object.values(this.state.profiles); },
-    get selected() { return new Set(this.profile?.modules || []); },
+    get profile() { return this.state.profiles.default; },
+    get selected() { return new Set(this.profile.modules); },
     get moduleTotal() { this.tick; return vsm.catalog.allRels().length; },
-    get sidebar() {
-      this.tick;
-      const sel = this.selected;
-      return vsm.catalog.categories().map(c => ({ cat: c, selected: c.modules.filter(m => sel.has(m.rel)).length, total: c.modules.length }));
-    },
     get overlayRels() { this.tick; return vsm.catalog.overlayRels(); },
-    get presets() { return vsm.catalog.presets; },
-    get checklist() { this.tick; const p = this.profile; return p ? checklist(vsm.catalog, A.raw(p), this.buildsFor(p.slug)[0] || null) : []; },
-    volumeOf, costOf, costTags,
-    fillCostTable(tbody) {
-      if (!tbody) return;
-      const lvl = v => `<span class="vsm-cost-dim vsm-cost-${v || "low"}">${v || "low"}</span>`;
-      tbody.innerHTML = vsm.catalog.categories().map(c => { const k = costOf(c.dirname); return `<tr><td><a href="#/c/${c.dirname}">${c.event_ids.join("/")} ${esc(c.label)}</a></td><td>${lvl(k.volume)}</td><td>${lvl(k.cpu)}</td><td>${lvl(k.disk)}${k.privacy === "high" ? ' <span class="vsm-cost-dim vsm-cost-high">privacy</span>' : ""}</td><td class="small">${esc(k.why)}</td></tr>`; }).join("");
-    },
-    get showWizard() { return !this.state.onboarded && !Object.values(this.state.builds).some(b => b.length) && this.overlayRels.length === 0; },
-    dismissWizard() { this.state.onboarded = true; this.persist(); },
+    get hasQuery() { return !!(this.route.query.q || "").trim() || !!this.lastQuery.trim(); },
+    get searchHref() { return this.lastQuery ? `#/?q=${encodeURIComponent(this.lastQuery)}` : "#/"; },
+    get pageTitle() { return ({ editor: "Rule editor", raw: "Raw XML", newModule: "New module", coverage: "ATT&CK coverage", help: "Help" })[this.route.page] || ""; },
+    get statusLine() { this.tick; const e = this.overlayRels.length; return `${this.selected.size} of ${this.moduleTotal} modules${e ? ` · ${e} edited` : ""}`; },
+    get dlChecklist() { return this.dl ? checklist(vsm.catalog, A.raw(this.profile), this.dl.meta) : []; },
+    volumeOf: cat => { const c = costOf(cat); return { level: c.volume, disk: c.disk === "high", why: c.why }; },
+    costOf, costTags,
 
-    persist(touch = true) { if (touch && this.profile) this.profile.updated = new Date().toISOString(); S.saveState(A.raw(this.state)); },
+    persist(touch = true) { if (touch) this.profile.updated = new Date().toISOString(); S.saveState(A.raw(this.state)); },
     notify(msg) { this.flash = msg; clearTimeout(this._flashT); this._flashT = setTimeout(() => { this.flash = ""; }, 5000); },
     go(hash) { location.hash = hash; },
-    // #/help/<section> – scroll the section into view (TOC links can't use plain #id with hash routing)
     scrollToSection() {
       const id = this.route.id;
       const el = id ? document.getElementById(id) : null;
@@ -176,55 +160,30 @@ document.addEventListener("alpine:init", () => {
       else if (!id) window.scrollTo(0, 0);
     },
 
-    // ── profiles ──
-    switchProfile(slug) { if (this.state.profiles[slug]) { this.state.current = slug; this.persist(); this.go("#/"); } },
-    // mode: "all" | "none" | "preset:<id>"
-    createProfile(name, mode, copyFrom, extra = {}) {
-      const slug = S.slugify(name);
-      if (this.state.profiles[slug]) throw new Error("Profile already exists");
-      const src = copyFrom && this.state.profiles[copyFrom];
-      const preset = mode?.startsWith("preset:") ? vsm.catalog.presets.find(x => x.id === mode.slice(7)) : null;
-      const p = src ? { ...JSON.parse(JSON.stringify(A.raw(src))), slug, name: name.trim(), created: new Date().toISOString() }
-        : preset ? S.presetProfile(slug, name.trim(), preset, extra)
-        : S.newProfile(slug, name.trim(), { modules: mode === "all" ? vsm.catalog.allRels() : [], ...extra });
-      this.state.profiles[slug] = p; this.state.current = slug; this.persist();
-      return slug;
-    },
-    deleteProfile(slug) {
-      delete this.state.profiles[slug]; delete this.state.builds[slug];
-      if (this.state.current === slug) this.state.current = Object.keys(this.state.profiles)[0] || "";
-      if (!this.state.current) S.ensureDefault(this.state, vsm.catalog);
-      this.persist();
-    },
+    // ── configuration (single implicit profile) ──
     setModules(rels) { this.profile.modules = [...new Set(rels)].filter(r => vsm.catalog.exists(r)).sort(); this.persist(); },
     toggle(rel, on) { const s = this.selected; on ? s.add(rel) : s.delete(rel); this.setModules([...s]); },
-    selectCategory(cat, mode) {
-      const rels = vsm.catalog.moduleRels(cat), s = this.selected;
-      if (mode === "all") rels.forEach(r => s.add(r));
-      else if (mode === "none") rels.forEach(r => s.delete(r));
-      else rels.filter(r => kindOf(r) === mode).forEach(r => s.add(r));
-      this.setModules([...s]);
-    },
-    selectAll(mode) {
-      const rels = vsm.catalog.allRels();
-      this.setModules(mode === "all" ? rels : mode === "none" ? [] : rels.filter(r => kindOf(r) === mode));
-    },
+    setTarget(v) { if (S.SYSMON_VERSIONS.includes(v)) { this.profile.sysmon_version = v; this.persist(); } },
     importList(text, mode) {
-      const rels = parseList(text, vsm.catalog);
-      const s = this.selected;
-      if (mode === "exclude") rels.forEach(r => s.delete(r));
-      else if (mode === "add") rels.forEach(r => s.add(r));
-      else { s.clear(); rels.forEach(r => s.add(r)); }
-      this.setModules([...s]);
-      return rels.length;
+      const rels = parseList(text, vsm.catalog), s = this.selected;
+      if (mode === "exclude") rels.forEach(r => s.delete(r)); else if (mode === "add") rels.forEach(r => s.add(r)); else { s.clear(); rels.forEach(r => s.add(r)); }
+      this.setModules([...s]); return rels.length;
     },
-    exportList() { download(`${this.profile.slug}_include_rules.txt`, formatList(this.profile, APP_TITLE), "text/plain"); },
+    exportList() { download("include_rules.txt", formatList(this.profile, APP_TITLE), "text/plain"); },
+    resetToStandard() {
+      const edits = this.overlayRels.length;
+      if (!confirm(`Reset to sysmon-modular's standard configuration?\n\nThis restores the standard module selection and discards ${edits} edited/custom module(s). Export first if you want to keep them.`)) return;
+      const balanced = vsm.catalog.presets.find(p => p.id === "balanced");
+      for (const rel of Object.keys(this.state.overlay)) delete this.state.overlay[rel];
+      this.setModules(balanced ? balanced.modules : vsm.catalog.allRels());
+      this.tick++; this.persist(); this.notify("Standard configuration restored");
+    },
 
     // ── overlay ──
     writeOverlay(rel, xml) { this.state.overlay[rel] = xml.endsWith("\n") ? xml : xml + "\n"; this.tick++; this.persist(); },
     revert(rel) {
       delete this.state.overlay[rel]; this.tick++;
-      if (!vsm.catalog.exists(rel)) for (const p of Object.values(this.state.profiles)) p.modules = p.modules.filter(m => m !== rel);
+      if (!vsm.catalog.exists(rel)) this.profile.modules = this.profile.modules.filter(m => m !== rel);
       this.persist();
     },
     newModule(category, kind, name, eventType) {
@@ -243,83 +202,85 @@ document.addEventListener("alpine:init", () => {
       return newRel;
     },
 
-    // ── export / import of the whole state ──
-    importMode: "replace",
-    async importFromInput(ev) {
-      const f = ev.target.files[0]; if (!f) return;
-      try { const n = await this.importAll(f, this.importMode); this.notify(`Imported ${n.profiles} profiles and ${n.overlay} overlay modules`); this.go("#/profile"); }
-      catch (e) { this.notify(`Import failed: ${e.message}`); }
-      ev.target.value = "";
-    },
+    // ── export / import ──
     exportAll() { download(`vsm-export-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(S.exportState(A.raw(this.state), vsm.upstream), null, 2), "application/json"); },
     async importAll(file, mode) {
       const data = JSON.parse(await file.text());
       const n = S.importState(this.state, data, mode);
-      vsm.catalog.overlay = this.state.overlay;   // Catalog reads overlay by reference; replace mode swaps the object
-      for (const p of Object.values(this.state.profiles)) S.normalizeProfile(p, vsm.catalog);
+      // collapse to the single implicit configuration
+      const pick = this.state.profiles[data.current] || this.state.profiles.default || Object.values(this.state.profiles)[0];
+      if (pick) this.state.profiles.default = { ...pick, slug: "default" };
+      for (const slug of Object.keys(this.state.profiles)) if (slug !== "default") delete this.state.profiles[slug];
+      this.state.current = "default";
+      vsm.catalog.overlay = this.state.overlay;
+      S.normalizeProfile(this.profile, vsm.catalog);
       this.tick++; this.persist();
       return n;
+    },
+    async importFromInput(ev) {
+      const f = ev.target.files[0]; if (!f) return;
+      try { const n = await this.importAll(f, this.importMode); this.notify(`Imported ${n.profiles ? "configuration" : "nothing"}${n.overlay ? ` and ${n.overlay} edited modules` : ""}`); }
+      catch (e) { this.notify(`Import failed: ${e.message}`); }
+      ev.target.value = "";
     },
 
     // ── engine ──
     modulesFor(rels) { return rels.map(rel => ({ path: rel, xml: vsm.catalog.xml(rel) })).filter(m => m.xml !== undefined); },
-    async validateXml(rel, xml) {
-      return engine.validate({ path: rel, xml, sysmonVersion: this.profile.sysmon_version, unsupported: this.profile.unsupported });
-    },
+    async validateXml(rel, xml) { return engine.validate({ path: rel, xml, sysmonVersion: this.profile.sysmon_version, unsupported: "exclude" }); },
     async coverageReport(rels) {
-      if (!rels.length) return { ok: false, error: "The profile has no modules selected." };
+      if (!rels.length) return { ok: false, error: "No modules are switched on." };
       return engine.coverage({ modules: this.modulesFor(rels), format: "json" });
     },
     async navigatorLayer(rels, attackVersion) {
-      const r = await engine.coverage({ modules: this.modulesFor(rels), format: "navigator", attackVersion, name: `${this.profile.name} – Sysmon coverage` });
-      if (r.ok) download(`${this.profile.slug}-attack${attackVersion}-layer.json`, r.layer, "application/json");
+      const r = await engine.coverage({ modules: this.modulesFor(rels), format: "navigator", attackVersion, name: "Sysmon coverage" });
+      if (r.ok) download(`sysmon-attack${attackVersion}-layer.json`, r.layer, "application/json");
       return r;
     },
-    buildsFor(slug) { return this.state.builds[slug] || []; },
-    build(id) { return (this.state.builds[this.state.current] || []).find(b => b.id === id); },
-    async runBuild() {
+
+    // ── download = merge + modal ──
+    async download() {
       const p = this.profile;
-      if (!p.modules.length) { this.notify("No modules selected."); return; }
+      if (!p.modules.length) { this.notify("No modules are switched on."); return; }
       this.busy = engineStatus.state === "ready" ? "Merging modules…" : "Loading engine (one-time, ~4 MB)…";
       try {
         const modules = this.modulesFor(p.modules);
-        const r = await engine.merge({ modules, template: vsm.catalog.template, sysmonVersion: p.sysmon_version, unsupported: p.unsupported,
+        const r = await engine.merge({ modules, template: vsm.catalog.template, sysmonVersion: p.sysmon_version, unsupported: "exclude",
           preserveComments: true, forceGroupRelationOr: false, analyze: true });
         const findings = r.findings || [];
-        let id = nowStamp();
-        while (this.build(id)) id += "-x";
-        const meta = {
-          id, profile: p.slug, profile_name: p.name, sysmon_version: p.sysmon_version, schemaversion: r.schemaversion || this.schemaFor[p.sysmon_version],
-          module_count: modules.length, group_count: r.groupCount || 0, ok: !!r.ok && !!r.xml, error: r.error || "",
-          summary: summarize(findings), findings, warnings: r.warnings || [], output_size: r.xml ? r.xml.length : 0,
-          coverage: null, diff: null, diff_before: null, created: new Date().toISOString(),
-          include_list: formatList(p, APP_TITLE), upstream: vsm.upstream?.short || "",
+        const summary = summarize(findings);
+        const ok = !!r.ok && !!r.xml;
+        this.dl = {
+          ok, xml: r.xml || "", error: ok ? "" : (r.error || "The merge reported errors – fix them before downloading."),
+          summary, findings, findingsHtml: renderFindings(findings),
+          title: `${modules.length} modules · Sysmon ${p.sysmon_version} (schema ${r.schemaversion || this.schemaFor[p.sysmon_version]})${r.groupCount ? ` · ${r.groupCount} RuleGroups` : ""}`,
+          meta: { id: "now", ok, created: new Date().toISOString(), summary, findings },
         };
-        if (meta.ok) {
-          this.busy = "Computing coverage…";
-          const c = await engine.coverage({ modules, format: "json" });
-          if (c.ok) meta.coverage = c.report;
-          const prev = this.buildsFor(p.slug).find(b => b.ok);
-          if (prev) {
-            const before = await S.getBuildXml(prev.id);
-            if (before) {
-              this.busy = "Comparing with previous build…";
-              const d = await engine.diff({ before, after: r.xml });
-              if (d.ok) { meta.diff = d.diff; meta.diff_before = prev.id; }
-            }
-          }
-          await S.putBuildXml(id, r.xml);
-        }
-        const dropped = S.addBuild(this.state, p.slug, meta);
-        if (dropped.length) S.deleteBuildXml(dropped);
-        this.persist(false);   // a build does not modify the profile
-        this.go(`#/build/${id}`);
+        new window.bootstrap.Modal(document.getElementById("dl")).show();
       } finally { this.busy = ""; }
+    },
+    saveDownload() {
+      if (!this.dl?.ok) return;
+      download("sysmonconfig.xml", this.dl.xml, "application/xml");
+      window.bootstrap.Modal.getInstance(document.getElementById("dl"))?.hide();
+    },
+
+    // ── help tables ──
+    fillHelpTables(root) {
+      const cost = root.querySelector("#cost-table tbody");
+      const lvl = v => `<span class="vsm-cost-dim vsm-cost-${v || "low"}">${v || "low"}</span>`;
+      if (cost) cost.innerHTML = vsm.catalog.categories().map(c => { const k = costOf(c.dirname); return `<tr><td><a href="#/?q=cat:${c.event_ids[0]}">${c.event_ids.join("/")} ${esc(c.label)}</a></td><td>${lvl(k.volume)}</td><td>${lvl(k.cpu)}</td><td>${lvl(k.disk)}${k.privacy === "high" ? ' <span class="vsm-cost-dim vsm-cost-high">privacy</span>' : ""}</td><td class="small">${esc(k.why)}</td></tr>`; }).join("");
+      const ev = root.querySelector("#event-table tbody");
+      const sel = this.selected;
+      if (ev) ev.innerHTML = vsm.catalog.categories().map(c => {
+        const on = c.modules.filter(m => sel.has(m.rel)).length, inc = c.modules.filter(m => m.kind === "include").length;
+        const tags = costTags(c.dirname).map(t => `<span class="${t.cls}">${t.label}</span>`).join(" ");
+        return `<tr><td><span class="vsm-evid">${c.event_ids.join("/")}</span></td><td>${esc(c.label)} ${tags}</td><td>${on} / ${c.modules.length}</td><td class="small">${inc} include · ${c.modules.length - inc} exclude</td><td><a href="#/?q=cat:${c.event_ids[0]}">search</a> · <a href="#/new?cat=${c.dirname}">new module</a></td></tr>`;
+      }).join("");
     },
   });
 
   // ── keyboard shortcuts (ignored while typing) ──
-  const SHORTCUTS = { "/": "#/", "b": "build", "p": "#/profile", "c": "#/coverage", "h": "#/help", "?": "#/help/shortcuts", "l": "#/builds" };
+  const SHORTCUTS = { "/": "search", "d": "download", "c": "#/coverage", "h": "#/help", "?": "#/help/shortcuts" };
   document.addEventListener("keydown", e => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target;
@@ -329,83 +290,60 @@ document.addEventListener("alpine:init", () => {
     if (!action) return;
     e.preventDefault();
     const st = A.store("app");
-    if (action === "build") st.runBuild();
-    else if (action === "#/" && location.hash.replace(/\?.*$/, "") === "#/") document.getElementById("q")?.focus();
-    else { st.go(action); if (action === "#/") setTimeout(() => document.getElementById("q")?.focus(), 150); }
+    if (action === "download") st.download();
+    else if (action === "search") { if (st.route.page !== "search") st.go(st.searchHref); setTimeout(() => document.getElementById("q")?.focus(), 150); }
+    else st.go(action);
   });
 
   onEngineStatus(s => { const st = A.store("app"); st.engine.state = s.state; st.engine.error = s.error; });
   window.addEventListener("hashchange", () => {
     const route = parseRoute();
     A.store("app").route = route;
-    if (!(route.page === "help" && route.id)) window.scrollTo(0, 0);   // help sections scroll themselves
+    if (!(route.page === "help" && route.id)) window.scrollTo(0, 0);
   });
 
   // ── page components ──
   A.data("pageSearch", () => ({
-    q: "", kind: "", category: "", scope: "selected", result: null,
-    init() { this.q = this.$store.app.route.query.q || ""; this.run(); this.$watch("q", () => this.run()); this.$watch("scope", () => this.run()); },
+    q: "", scope: "selected", result: null,
+    init() {
+      this.q = this.$store.app.route.query.q || this.$store.app.lastQuery || "";
+      this.run();
+      this.$watch("q", () => { this.$store.app.lastQuery = this.q; this.run(); });
+      this.$watch("scope", () => this.run());
+      this.$watch("$store.app.route.query.q", v => { if (v !== undefined && v !== this.q) this.q = v; });
+      this.$nextTick(() => document.getElementById("q")?.focus());
+    },
     run() {
       if (!this.q.trim()) { this.result = null; return; }
-      this.result = search(vsm.catalog, A.raw(this.$store.app.profile), { q: this.q, kind: this.kind, category: this.category, scope: this.scope });
+      this.result = search(vsm.catalog, A.raw(this.$store.app.profile), { q: this.q, scope: this.scope });
+    },
+    get singleCategory() {
+      if (!this.result) return "";
+      const cats = new Set(this.result.module_rels.map(r => r.split("/")[0]));
+      return cats.size === 1 ? [...cats][0] : "";
     },
     newModule(i) { return i === 0 || this.result.hits[i].rel !== this.result.hits[i - 1].rel; },
     newCtx(i) { if (this.newModule(i)) return true; const a = this.result.hits[i], b = this.result.hits[i - 1]; return a.group_name !== b.group_name || a.event_type !== b.event_type || a.onmatch !== b.onmatch; },
     get mark() { return this.result ? this.result.terms.join(" ") : ""; },
     sentence(hit) { return describeHit(hit); },
+    // keep the hit list stable while toggling – only the flag changes until the next search
+    toggleHit(hit, on) { this.$store.app.toggle(hit.rel, on); for (const h of this.result.hits) if (h.rel === hit.rel) h.selected = on; },
     bulk(on) {
       if (!this.result) return;
       const s = this.$store.app.selected;
       for (const rel of this.result.module_rels) on ? s.add(rel) : s.delete(rel);
       this.$store.app.setModules([...s]);
-      this.$store.app.notify(`${this.result.module_rels.length} modules ${on ? "selected" : "deselected"}`);
-      this.run();
+      this.$store.app.notify(`${this.result.module_rels.length} modules switched ${on ? "on" : "off"}`);
+      for (const h of this.result.hits) h.selected = on;
     },
-  }));
-
-  A.data("pageProfile", () => ({
-    form: {}, newName: "", newMode: "preset:balanced", copyFrom: "", importMode: "replace",
-    init() { const p = this.$store.app.profile; this.form = { name: p.name, description: p.description, sysmon_version: p.sysmon_version, strip_unsupported: p.unsupported === "exclude" }; },
-    save() {
-      const p = this.$store.app.profile;
-      Object.assign(p, { name: this.form.name.trim() || p.name, description: this.form.description, sysmon_version: this.form.sysmon_version, unsupported: this.form.strip_unsupported ? "exclude" : "warn" });
-      this.$store.app.persist(); this.$store.app.notify("Settings saved");
-    },
-    get summary() {
-      const st = this.$store.app, b = this.builds[0];
-      const edited = st.overlayRels.filter(r => st.profile.modules.includes(r)).length;
-      const last = b ? ` · last build ${b.ok ? "OK" : "FAILED"} ${b.id.replace("T", " ").slice(5)}` : " · not built yet";
-      return `${st.selected.size} of ${st.moduleTotal} modules selected${edited ? ` · ${edited} edited/custom` : ""}${last}` + (st.profile.description ? ` · ${st.profile.description}` : "");
-    },
-    create() { try { const slug = this.$store.app.createProfile(this.newName, this.newMode, this.copyFrom); this.newName = ""; this.$store.app.notify(`Profile '${slug}' created`); this.init(); } catch (e) { this.$store.app.notify(e.message); } },
-    async importFile(ev) { const f = ev.target.files[0]; if (!f) return; const n = this.$store.app.importList(await f.text(), this.importMode); this.$store.app.notify(`${n} modules processed`); ev.target.value = ""; },
-    get builds() { return this.$store.app.buildsFor(this.$store.app.state.current).slice(0, 10); },
-  }));
-
-  A.data("pageCategory", () => ({
-    q: "", kind: "", dupName: {}, expanded: {},
-    volume(cat) { return volumeOf(cat); },
-    cost(cat) { return costOf(cat); },
-    explain(m) {
-      try { return describeModule(vsm.catalog.parsed(m.rel), { max: this.expanded[m.rel] ? 999 : 1 }); }
-      catch { return { sentences: [], more: 0, total: 0 }; }
-    },
-    get cat() { this.$store.app.tick; return vsm.catalog.categories().find(c => c.dirname === this.$store.app.route.cat) || null; },
-    get modules() {
-      const q = this.q.trim().toLowerCase();
-      return (this.cat?.modules || []).filter(m => (!this.kind || m.kind === this.kind) &&
-        (!q || m.filename.toLowerCase().includes(q) || m.title.toLowerCase().includes(q) || m.techniques.some(t => t[0].toLowerCase().includes(q) || t[1].toLowerCase().includes(q))));
-    },
-    isOn(rel) { return this.$store.app.selected.has(rel); },
-    duplicate(rel) { const name = (this.dupName[rel] || "").trim(); if (!name) return; try { const r = this.$store.app.duplicate(rel, name); this.$store.app.go(`#/m/${r}/edit`); } catch (e) { this.$store.app.notify(e.message); } },
-    revert(m) { if (confirm(m.source === "custom" ? `Delete your custom module ${m.filename}?` : `Reset ${m.filename} to the upstream version?`)) { this.$store.app.revert(m.rel); this.$store.app.notify("Module reset"); } },
   }));
 
   A.data("pageNewModule", () => ({
-    name: "", kind: "include", eventType: "",
-    get cat() { return vsm.catalog.categories().find(c => c.dirname === this.$store.app.route.cat) || null; },
-    init() { this.eventType = this.cat?.modules.flatMap(m => m.event_types)[0] || Object.keys(vsm.fields.events)[0]; },
-    create() { try { const rel = this.$store.app.newModule(this.$store.app.route.cat, this.kind, this.name, this.eventType); this.$store.app.go(`#/m/${rel}/edit`); } catch (e) { this.$store.app.notify(e.message); } },
+    name: "", kind: "include", eventType: "", category: "",
+    get categories() { return vsm.catalog.categories(); },
+    init() { this.category = this.$store.app.route.query.cat && this.categories.some(c => c.dirname === this.$store.app.route.query.cat) ? this.$store.app.route.query.cat : this.categories[0].dirname; this.pickEvent(); },
+    pickEvent() { const c = this.categories.find(x => x.dirname === this.category); this.eventType = c?.modules.flatMap(m => m.event_types)[0] || Object.keys(vsm.fields.events)[0]; },
+    create() { try { const rel = this.$store.app.newModule(this.category, this.kind, this.name, this.eventType); this.$store.app.go(`#/m/${rel}/edit`); } catch (e) { this.$store.app.notify(e.message); } },
   }));
 
   A.data("pageEditor", () => ({
@@ -480,34 +418,6 @@ document.addEventListener("alpine:init", () => {
     findingsHtml() { return this.findings === null ? "" : renderFindings(this.findings, { summary: summarize(this.findings) }); },
   }));
 
-  A.data("pageBuild", () => ({
-    xml: null, diffHtml: "", diffBefore: "", tab: "findings",
-    get previous() { return this.$store.app.buildsFor(this.$store.app.state.current).find(x => x.ok && x.id !== this.b?.id && x.id < this.b?.id) || null; },
-    fileName() { return `sysmonconfig-${this.b.profile}-${this.b.id}.xml`; },
-    get b() { return this.$store.app.build(this.$store.app.route.id); },
-    get grouped() { const g = {}; for (const s of SEVERITY_ORDER) g[s] = (this.b?.findings || []).filter(f => f.severity === s); return g; },
-    get matrix() { return this.b?.coverage ? buildMatrix(this.b.coverage) : null; },
-    get others() { return this.$store.app.buildsFor(this.$store.app.state.current).filter(x => x.ok && x.id !== this.b?.id); },
-    sevLabel: s => SEV_LABEL[s],
-    init() { this.load(); this.$watch("$store.app.route.id", () => this.load()); },
-    load() {
-      this.xml = null; this.diffHtml = "";
-      if (!this.b) return;
-      this.tab = this.b.ok && !this.b.summary.error ? "deploy" : "findings";
-      this.diffBefore = this.b.diff_before || this.others[0]?.id || "";
-      if (this.b.diff) this.diffHtml = renderDiff(this.b.diff, this.b.diff_before, this.b.id);
-    },
-    findingsHtml(list) { return renderFindings(list); },
-    async loadXml() { if (this.xml === null) this.xml = (await S.getBuildXml(this.b.id)) || "(XML no longer stored)"; },
-    async download() { const x = await S.getBuildXml(this.b.id); if (x) download(`sysmonconfig-${this.b.profile}-${this.b.id}.xml`, x, "application/xml"); else this.$store.app.notify("XML no longer stored for this build"); },
-    async runDiff() {
-      const before = await S.getBuildXml(this.diffBefore), after = await S.getBuildXml(this.b.id);
-      if (!before || !after) { this.diffHtml = '<p class="text-muted">One of the builds has no stored XML.</p>'; return; }
-      const d = await engine.diff({ before, after });
-      this.diffHtml = d.ok ? renderDiff(d.diff, this.diffBefore, this.b.id) : `<div class="kc-callout kc-callout--danger"><span class="kc-callout-icon">✖</span><div><p class="kc-callout-body mb-0">${esc(d.error)}</p></div></div>`;
-    },
-  }));
-
   A.data("pageCoverage", () => ({
     matrix: null, tagging: null, error: "", loading: true,
     async init() {
@@ -519,24 +429,6 @@ document.addEventListener("alpine:init", () => {
     },
     async navigator(v) { const r = await this.$store.app.navigatorLayer(this.$store.app.profile.modules, v); if (!r.ok) this.$store.app.notify(r.error); else if (r.notes?.length) this.$store.app.notify(r.notes[0]); },
     json() { this.$store.app.coverageReport(this.$store.app.profile.modules).then(r => r.ok && download(`${this.$store.app.profile.slug}-coverage.json`, JSON.stringify(r.report, null, 2), "application/json")); },
-  }));
-
-  A.data("wizard", () => ({
-    step: 1, presetId: "", version: S.DEFAULT_SYSMON_VERSION, name: "",
-    icons: { "balanced": "⚖️", "balanced-filedelete": "🗄️", "mde-augment": "🛡️", "excludes-only": "🔬" },
-    get presets() { return vsm.catalog.presets; },
-    get preset() { return this.presets.find(p => p.id === this.presetId) || null; },
-    pick(id) { this.presetId = id; this.name = this.name || (id === "balanced" ? "workstations" : id); this.step = 2; },
-    finish() {
-      try {
-        const slug = this.$store.app.createProfile(this.name || this.presetId, `preset:${this.preset.id}`, "", { sysmon_version: this.version });
-        this.$store.app.dismissWizard();
-        window.bootstrap.Modal.getInstance(document.getElementById("wizard"))?.hide();
-        this.$store.app.notify(`Profile '${slug}' created from the ${this.preset.name} preset – next: press Build`);
-        this.$store.app.go("#/profile");
-      } catch (e) { this.$store.app.notify(e.message); }
-    },
-    open() { new window.bootstrap.Modal(document.getElementById("wizard")).show(); },
   }));
 
   // Autocomplete for technique_id=…,technique_name=… on Rule / RuleGroup name inputs.
@@ -577,6 +469,7 @@ document.addEventListener("alpine:init", () => {
     },
   }));
 
+
   A.data("attackMatrix", () => ({
     q: "", showSubs: true, sel: null,
     matches(n) { const q = this.q.trim().toLowerCase(); return !q || n.hay.includes(q); },
@@ -597,16 +490,12 @@ export function parseRoute(hash = location.hash) {
   const [pathPart, queryPart] = h.split("?");
   const query = Object.fromEntries(new URLSearchParams(queryPart || ""));
   const seg = pathPart.split("/").filter(Boolean).map(decodeURIComponent);
-  const r = { page: "search", cat: "", rel: "", id: "", query };
+  const r = { page: "search", rel: "", id: "", query };
   if (!seg.length) return r;
   switch (seg[0]) {
-    case "profile": r.page = "profile"; break;
-    case "builds": r.page = "builds"; break;
     case "coverage": r.page = "coverage"; break;
     case "help": r.page = "help"; r.id = seg[1] || ""; break;
-    case "c": r.page = "category"; r.cat = seg[1] || ""; break;
-    case "new": r.page = "newModule"; r.cat = seg[1] || ""; break;
-    case "build": r.page = "build"; r.id = seg[1] || ""; break;
+    case "new": r.page = "newModule"; break;
     case "m": {
       const rel = seg.slice(1, 3).join("/");
       r.page = seg[3] === "raw" ? "raw" : "editor"; r.rel = validRel(rel) ? rel : "";

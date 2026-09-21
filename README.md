@@ -6,43 +6,35 @@ Pick modules per Sysmon event, edit rules in a form or as raw XML, validate, mer
 ATT&CK coverage, semantic diff) is compiled to WebAssembly, so the result is exactly what
 `sysmon-modular merge` would produce. Nothing is uploaded anywhere.
 
-**Live site:** https://kommunecert.github.io/visual-sysmon-modular/ – deployed from the `next` branch;
-`main` is the stable reference (tag `v1.0-modular-ui`).
+**Live site:** https://kommunecert.github.io/visual-sysmon-modular/ – deployed from the `next` branch
+(search-first UI). `main` / tag `v1.0-modular-ui` keep the earlier multi-page UI.
 
 ## What you can do
 
-- **Guided start** – first visit lets you pick one of sysmon-modular's own published configurations
-  (Balanced, Balanced with FileDelete, MDE augment, Excludes only – each with a "use for" line) and the
-  Sysmon version on your hosts, then creates a profile from it.
-- **Plain-language rules** – every module card, search hit and editor rule is explained as a sentence
-  ("Log ProcessCreate when Image is the process `wevtutil.exe` and CommandLine contains …").
-- **Before you deploy** – a checklist on the Profile and build pages flags empty/exclude-only selections,
-  high-volume event types without their noise exclusions, target-version pitfalls and analyzer hints.
-- **Deploy tab** – copyable install/update/verify/rollback commands for each build.
-- **Search** the current configuration as you type – hits are the matching `<Rule>`/condition in
-  context (module → RuleGroup → event), syntax-highlighted with the match marked.
-- **Profiles** – independent module selections with their own target Sysmon version (12–15) and
-  build options; one per fleet.
-- **Categories** – the same directories as upstream; toggle include (detection) and exclude (noise)
-  modules, or select all/includes/excludes per category.
+The landing page is a search box. You start from sysmon-modular's standard `sysmonconfig.xml`
+(the "Balanced" selection) and change it from the search results:
+
+- **Search** as you type – free text, ATT&CK IDs, field names, values, with a small query syntax
+  (`-word`, `/regex/`, `"phrase"`, `kind:` `cat:` `event:` `onmatch:` `field:` `op:` `tech:` `value:`).
+  Every hit is the matching `<Rule>`/condition in context (module → RuleGroup → event), explained in
+  plain words and syntax-highlighted, with a **switch** to take the module in or out of your
+  configuration and **Edit / XML** buttons.
 - **Rule editor** – RuleGroup → event → Rule → conditions with field/operator dropdowns from the
-  Sysmon schema and ATT&CK technique autocomplete (upstream's embedded table) with a live tag check.
-  Saving validates with upstream's validator.
-- **Raw XML** editor with highlighting, validation and "save anyway".
+  Sysmon schema, ATT&CK technique autocomplete with a live tag check, and plain-language explanations.
+  Saving validates with upstream's validator. **Raw XML** editor with highlighting for everything else.
 - **Overlay** – upstream modules are never changed; your edits and custom modules shadow them.
-  *Reset to upstream* removes your copy.
-- **Build** – merge + schema validation + analyzer; findings by severity, ATT&CK matrix, semantic diff
-  against the previous build, log and highlighted XML. Last 10 builds per profile are kept.
-- **Coverage** – live ATT&CK tactic × technique matrix for the selected modules, tagged-vs-untagged
-  rule stats, Navigator layer export.
-- **Import/export** of upstream-style include/exclude lists, and **Save / Load** of everything
-  (profiles + overlay) as one JSON file.
-- **Help** page explaining the workflow, search syntax, keyboard shortcuts (`/` `b` `p` `c` `h` `?`) and how
-  Sysmon include/exclude filtering works.
+- **Download sysmonconfig.xml** (footer, or `d`) – merge + schema validation + analyzer in the browser;
+  a summary shows findings by severity and a plain-language *Before you deploy* checklist first.
+- **Coverage** – live ATT&CK tactic × technique matrix for your configuration, tagged-vs-untagged rule
+  stats, Navigator layer export.
+- **Help** – workflow, event types (what is on, what each event type costs in volume/CPU/disk/privacy),
+  how Sysmon include/exclude filtering works, condition operators, search syntax, shortcuts, deploying.
+- **Save / Load** – export your selection and edited modules as one JSON file, import it anywhere,
+  reset to the standard configuration, export an `include_rules.txt` for upstream's CLI.
 
 ## Where your data lives
 
-In your browser only: profiles and edited modules in `localStorage`, build outputs in IndexedDB.
+In your browser only: your selection and edited modules in `localStorage`.
 Clearing site data or switching devices starts from scratch – use **Save / Load** to export a JSON
 file and keep it in your own repo. Exports reference upstream modules by path, so they stay valid
 across upstream updates.
@@ -57,7 +49,7 @@ tools/build.sh              runs the generator and compiles the WASM engine into
 site/                       the static site: index.html + ES modules + Alpine.js + Bootstrap
   js/engine-worker.js       Web Worker hosting the Go/WASM engine (loaded on first use, ~4 MB)
   js/model.js               XML ⇄ rule model (own small parser, no DOM dependency)
-  js/catalog.js, search.js, attack.js, state.js, includelist.js
+  js/catalog.js, search.js, describe.js, checks.js, attack.js, state.js, includelist.js
 ```
 
 The wrapper is copied into `vendor/sysmon-modular/tooling/cmd/vsmwasm/` at build time because the

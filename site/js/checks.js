@@ -75,7 +75,10 @@ export function checklist(catalog, profile, lastBuild) {
     if (!inCat.length) continue;
     const catIncl = inCat.filter(r => kindOf(r) === "include"), catExcl = inCat.filter(r => kindOf(r) === "exclude");
     const availExcl = catalog.moduleRels(cat).filter(r => kindOf(r) === "exclude");
-    if (!catIncl.length && catExcl.length) out.push(item("warn", `${cat}: exclude-only – everything is logged`, `Without an include filter this high-volume event type is collected in full except the excluded noise. ${v.why}`, `#/c/${cat}`));
+    const availIncl = catalog.moduleRels(cat).filter(r => kindOf(r) === "include");
+    // exclude-only is only worth flagging when the category *has* include modules that were switched off
+    // (upstream ships some categories, e.g. DNS, as exclude-only by design)
+    if (!catIncl.length && catExcl.length && availIncl.length) out.push(item("warn", `${cat}: exclude-only – everything is logged`, `Without an include filter this high-volume event type is collected in full except the excluded noise. ${v.why}`, `#/c/${cat}`));
     else if (catIncl.length && availExcl.length && !catExcl.length) out.push(item("warn", `${cat}: no noise exclusions selected`, `High-volume event type with all ${availExcl.length} exclusion modules off. ${v.why}`, `#/c/${cat}`));
   }
   const raw = rels.filter(r => r.startsWith("9_raw_access_read/") && kindOf(r) === "include");

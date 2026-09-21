@@ -33,6 +33,7 @@ test("empty and exclude-only selections", () => {
   const t = titles(checklist(catalog, exclOnly, null));
   assert.ok(t.includes("Only exclusion modules are selected"));
   assert.ok(t.some(x => x.startsWith("7_image_load: exclude-only")));
+  assert.ok(!t.some(x => x.startsWith("22_dns_query")), "DNS is exclude-only upstream by design");
 });
 
 test("high-volume category without exclusions, filedelete, version, build state", () => {

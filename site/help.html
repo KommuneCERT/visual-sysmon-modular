@@ -7,8 +7,9 @@
   <nav class="kc-surface rounded-3 p-3 vsm-toc">
     <div class="small fw-bold text-uppercase mb-2">Contents</div>
     <a href="#/help/workflow">Workflow</a>
-    <a href="#/help/presets">Presets &amp; guided start</a>
-    <a href="#/help/concepts">Profiles, overlay, builds</a>
+    <a href="#/help/standard">The standard configuration</a>
+    <a href="#/help/events">Event types</a>
+    <a href="#/help/concepts">Configuration, overlay, download</a>
     <a href="#/help/sysmon">Sysmon configuration basics</a>
     <a href="#/help/onmatch">include vs. exclude</a>
     <a href="#/help/matching">How rules match</a>
@@ -28,40 +29,42 @@
 
 <section id="workflow" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Workflow</h2>
-  <p>This site wraps <a href="https://github.com/olafhartong/sysmon-modular" target="_blank" rel="noopener">sysmon-modular</a>: a library of small XML <em>modules</em>, one per detection idea or noise exclusion, organised in directories per Sysmon event ID. Upstream is normally used by editing text lists and running a CLI. Here you do the same thing with switches and forms – and the same Go code that powers that CLI, compiled to WebAssembly, does the merging, validation and analysis <strong>inside your browser</strong>. Nothing you select or edit is sent anywhere.</p>
+  <p>This site wraps <a href="https://github.com/olafhartong/sysmon-modular" target="_blank" rel="noopener">sysmon-modular</a>: a library of small XML <em>modules</em>, one per detection idea or noise exclusion, organised by Sysmon event ID. The same Go code that powers upstream's CLI, compiled to WebAssembly, does the merging, validation and analysis <strong>inside your browser</strong>. Nothing you select or edit is sent anywhere.</p>
   <ol class="vsm-steps">
-    <li><strong>Pick a profile</strong> (top right). A profile is one selection of modules plus build settings – e.g. <code>servers</code> and <code>workstations</code>.</li>
-    <li><strong>Search</strong> (the start page) to look through the current configuration: free text, ATT&amp;CK IDs, field names or values, filtered by include/exclude and category. Every hit is the matching <code>&lt;Rule&gt;</code> or condition in context, one click from the editor.</li>
-    <li><strong>Walk the categories</strong> in the sidebar. Each one is a Sysmon event ID. Toggle modules on or off; the badge shows selected/total.</li>
-    <li><strong>Edit a module</strong> when a rule needs tuning: <em>Edit</em> opens the rule editor, <em>XML</em> the raw text. Both validate with the upstream CLI before saving. Upstream files are never changed – your version is stored as an <em>overlay</em>.</li>
-    <li><strong>Create your own modules</strong> for environment-specific exclusions (<em>+ New module</em> in a category).</li>
-    <li><strong>Build.</strong> The selected modules are merged into one <code>sysmonconfig.xml</code>. The result page shows validation findings, ATT&amp;CK coverage and a semantic diff against the previous build.</li>
-    <li><strong>Deploy</strong> the downloaded file with <code>sysmon64 -c sysmonconfig.xml</code> (update) or <code>sysmon64 -accepteula -i sysmonconfig.xml</code> (install).</li>
+    <li><strong>Search</strong> for what you want to change: a process name, an ATT&amp;CK ID, a field, a category (<code>cat:22</code>), a module type (<code>kind:exclude</code>). Every hit is the matching <code>&lt;Rule&gt;</code> in context.</li>
+    <li><strong>Switch modules on or off</strong> with the toggle on each hit (or <em>Switch on/off all hits</em>). You start from upstream's standard configuration.</li>
+    <li><strong>Edit a rule</strong> with <em>Edit</em> (form) or <em>XML</em> (raw). Both validate with upstream's validator before saving; upstream files are never changed – your version is stored as an overlay.</li>
+    <li><strong>Create your own modules</strong> for environment-specific exclusions (Save / Load menu → <em>New custom module</em>, or from a category search).</li>
+    <li><strong>Download</strong> (footer, or <kbd>d</kbd>): the selected modules are merged into one <code>sysmonconfig.xml</code>; a summary shows findings and a pre-deploy checklist first.</li>
+    <li><strong>Deploy</strong> with <code>sysmon64 -c sysmonconfig.xml</code> – see <a href="#/help/deploy">Deploying</a>.</li>
   </ol>
 </section>
 
-<section id="presets" class="kc-surface rounded-3 p-4 mb-4">
-  <h2 class="kc-section-title">Presets &amp; guided start</h2>
-  <p>The guided start (first visit, or <em>Guided start</em> on the Profile page) creates a profile from one of sysmon-modular's own published configurations – same names, same module selections, recomputed from the current upstream snapshot on every site build:</p>
-  <dl class="vsm-dl">
-    <dt>Balanced</dt><dd><code>sysmonconfig.xml</code>: every module except FileDelete archiving (event 23). <strong>Use for</strong> workstations and servers – the regular starting point.</dd>
-    <dt>Balanced with FileDelete</dt><dd><code>sysmonconfig-with-filedelete.xml</code>: adds event 23, which also copies deleted files into the Sysmon archive directory. <strong>Use for</strong> servers and high-value hosts where preserved deleted files matter more than disk.</dd>
-    <dt>MDE augment</dt><dd><code>sysmonconfig-mde-augment.xml</code>: Balanced minus the modules whose telemetry Microsoft Defender for Endpoint already collects (<code>0_custom_configuration/mde_covered_modules.txt</code> upstream). <strong>Use for</strong> hosts onboarded to MDE.</dd>
-    <dt>Excludes only</dt><dd><code>sysmonconfig-excludes-only.xml</code>: only the noise-exclusion modules, so every event type is logged except known noise. <strong>Use for</strong> research and lab hosts; very high volume.</dd>
-  </dl>
-  <p><strong>Server roles</strong> (domain controllers, SQL, Exchange/IIS, RDS…) do not need their own presets: Sysmon records the same event types on every Windows host, and the detection modules apply everywhere. What differs per role is the <em>noise</em> – database agents, backup, web workers – so start from Balanced and add your own <em>exclude</em> modules for the software on those hosts. Role-specific security telemetry (Kerberos, mailbox access, HTTP requests) comes from the Windows Security log and the application logs, not from Sysmon.</p>
-  <p>Builds follow upstream's release settings: comments are preserved, the analyzer always runs, and – when the profile's <em>remove unsupported</em> option is on (default) – events and fields newer than the chosen Sysmon target are stripped. A preset is just the starting selection; every module can be changed afterwards.</p>
-  <p>The <strong>Before you deploy</strong> list on the Profile and build pages turns common pitfalls into plain-language notes: empty or exclude-only selections, high-volume event types (ImageLoad, ProcessAccess, Registry – marked with a red <em>high</em> tag in the sidebar; hover it for the reason) without their exclusions, target-version mismatches, analyzer hints and a profile changed after its last build.</p>
+<section id="standard" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">The standard configuration</h2>
+  <p>You start from sysmon-modular's published <code>sysmonconfig.xml</code> ("Balanced"): every detection and noise-exclusion module except FileDelete archiving (event 23). It is the recommended starting point for workstations and servers. Everything you change – modules switched on or off, edited rules, custom modules – is stored in this browser and applied on top of that standard when you press <strong>Download</strong>.</p>
+  <p>Builds follow upstream's release settings: comments are preserved, the analyzer always runs, and events or fields newer than the Sysmon target chosen in the footer are removed so the file loads cleanly. Other upstream variants are one search away: <a href="#/?q=kind:exclude">only the exclusions</a> (research), or switch FileDelete on via <a href="#/?q=cat:23">cat:23</a>. Hosts with Microsoft Defender for Endpoint: upstream's <code>mde_covered_modules.txt</code> lists what MDE already collects – import it as an <em>exclude list</em> from <em>Save / Load</em> if you want the "MDE augment" variant.</p>
+  <p><strong>Reset to standard configuration</strong> (Save / Load menu) restores the standard selection and discards your edited and custom modules – export first if you want to keep them.</p>
+  <p>Server roles (domain controllers, SQL, Exchange/IIS, RDS…) do not need separate configurations: Sysmon records the same event types on every Windows host and the detection modules apply everywhere. What differs per role is the <em>noise</em>, so add your own <em>exclude</em> modules for the software on those hosts. Role-specific security telemetry (Kerberos, mailbox access, HTTP requests) comes from the Windows Security log and application logs, not from Sysmon.</p>
+</section>
+
+<section id="events" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">Event types</h2>
+  <p>sysmon-modular groups its modules by Sysmon event ID. The table shows what is in your configuration right now; <em>search</em> lists the modules of that event type so you can switch them on or off, <em>new module</em> creates a custom one. Tags mark event types that are expensive to enable (see <a href="#/help/cost">what each event type costs</a>).</p>
+  <div class="table-responsive"><table class="table table-sm kc-table" id="event-table">
+    <thead><tr><th>ID</th><th>Event</th><th>On / total</th><th>Modules</th><th></th></tr></thead>
+    <tbody></tbody>
+  </table></div>
 </section>
 
 <section id="concepts" class="kc-surface rounded-3 p-4 mb-4">
-  <h2 class="kc-section-title">Profiles, overlay, builds</h2>
+  <h2 class="kc-section-title">Configuration, overlay, download</h2>
   <dl class="vsm-dl">
     <dt>Upstream</dt><dd>The pinned snapshot of sysmon-modular this site was built from (commit shown in the footer). Read-only. The site is rebuilt when upstream is updated; your data is untouched because it references modules by path.</dd>
-    <dt>Profile</dt><dd>A selection of module paths plus the build options (target Sysmon version, analyzer on/off, …). Profiles are independent; the overlay is shared by all of them.</dd>
+    <dt>Configuration</dt><dd>Your selection of module paths plus the Sysmon target. There is exactly one; it starts as the standard configuration.</dd>
     <dt>Overlay</dt><dd>Copy-on-write layer on top of upstream. When you save an upstream module, a copy with the same relative path is written to the overlay and shadows the original in every build. Modules that only exist in the overlay are your <span class="kc-tag kc-tag-navy">custom</span> modules; shadowed ones are marked <span class="kc-tag kc-tag-green">edited</span>. <em>Reset to upstream</em> deletes the overlay copy. When upstream later changes a module you have edited, your copy still wins – review it with <em>Reset</em> if you want the new upstream version.</dd>
-    <dt>Build</dt><dd>One run of the merge engine for a profile. The last ten builds per profile are kept in this browser with their output XML, findings, coverage and diff, so you can trace what went into a deployed file and compare builds.</dd>
-    <dt>Include list</dt><dd>Upstream's own plain-text selection format (one module path or directory per line). You can export a profile as such a list or import one; this is the bridge to people who use the CLI directly.</dd>
+    <dt>Download</dt><dd>One run of the merge engine over the modules that are switched on. The result is validated and analysed before the file is offered; nothing is stored – download again whenever you change something.</dd>
+    <dt>Include list</dt><dd>Upstream's own plain-text selection format (one module path or directory per line). You can export your selection as such a list (Save / Load menu) or import one; this is the bridge to people who use the CLI directly.</dd>
   </dl>
 </section>
 
@@ -131,12 +134,12 @@
   <h2 class="kc-section-title">How sysmon-modular merges</h2>
   <p>Every module is a complete mini-configuration with one or more <code>RuleGroup</code>s. <code>sysmon-modular merge</code> takes the template (<code>templates/sysmon_template.xml</code>: root options such as hashing and DNS lookup), drops all selected modules' RuleGroups into <code>EventFiltering</code> unchanged, sets <code>schemaversion</code> for the target Sysmon version and validates the result. It does not rewrite or deduplicate rules – what you see in a module is what ends up in the file.</p>
   <p>The order of modules is not significant for the outcome, because Sysmon evaluates all groups and applies the exclude-wins rule globally per event type.</p>
-  <p>The build runs the merge with <code>--analyze</code> (when enabled in the profile), which adds <em>conflict</em> findings (an include and an exclude that cancel each other), <em>performance</em> findings (patterns that are expensive to evaluate on every event) and <em>recommendations</em> (e.g. an exclusion by bare image name where a full path would be safer). Recommendations never fail a build; errors do.</p>
+  <p>The download runs the merge with <code>--analyze</code>, which adds <em>conflict</em> findings (an include and an exclude that cancel each other), <em>performance</em> findings (patterns that are expensive to evaluate on every event) and <em>recommendations</em> (e.g. an exclusion by bare image name where a full path would be safer). Recommendations never fail a build; errors do.</p>
 </section>
 
 <section id="versions" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Sysmon versions &amp; schema</h2>
-  <p>The <em>target Sysmon version</em> in the profile decides the <code>schemaversion</code> written to the output and which events and fields are allowed. Newer events (e.g. <code>FileExecutableDetected</code>, Sysmon 15) and fields (e.g. <code>User</code> on file events, Sysmon 14) are flagged as <code>SYS204</code>/<code>SYS205</code> when the target is older; with <em>Remove from output</em> they are stripped so the file loads on the older binary.</p>
+  <p>The <em>Sysmon target</em> in the footer decides the <code>schemaversion</code> written to the output and which events and fields are allowed. Newer events (e.g. <code>FileExecutableDetected</code>, Sysmon 15) and fields (e.g. <code>User</code> on file events, Sysmon 14) are removed for an older target (reported as <code>SYS204</code>/<code>SYS205</code> warnings in the download summary) so the file loads on that binary.</p>
   <div class="table-responsive"><table class="table table-sm kc-table">
     <thead><tr><th>Sysmon</th><th>Schema</th><th>Adds</th></tr></thead>
     <tbody>
@@ -146,7 +149,7 @@
       <tr><td>15.x</td><td>4.90 / 4.91</td><td>FileExecutableDetected</td></tr>
     </tbody>
   </table></div>
-  <p>A module's own <code>schemaversion</code> only matters for the module file itself; the merged file always uses the profile's target. The rule editor sets it automatically to the lowest schema that supports the events the module uses, so you never need to touch it (the raw XML editor still lets you). <code>sysmon64 -s</code> prints the schema of an installed binary if you need to check which fields it knows.</p>
+  <p>A module's own <code>schemaversion</code> only matters for the module file itself; the merged file always uses the Sysmon target from the footer. The rule editor sets it automatically to the lowest schema that supports the events the module uses, so you never need to touch it (the raw XML editor still lets you). <code>sysmon64 -s</code> prints the schema of an installed binary if you need to check which fields it knows.</p>
 </section>
 
 <section id="cost" class="kc-surface rounded-3 p-4 mb-4">
@@ -184,7 +187,7 @@
       <tr><td><code>tech:</code></td><td>ATT&amp;CK id prefix on the rule or its group</td><td><code>tech:T1059</code>, <code>tech:T1003.001</code></td></tr>
     </tbody>
   </table></div>
-  <p>Below the counters, <em>Select all hit modules</em> / <em>Deselect</em> apply the search to the profile in one go – e.g. <code>kind:exclude cat:22</code> to switch every DNS exclusion on, or <code>value:sophos</code> to find and remove all Sophos-related modules.</p>
+  <p>Below the counters, <em>Switch on all hits</em> / <em>Switch off</em> apply the search to your configuration in one go – e.g. <code>kind:exclude cat:22</code> to switch every DNS exclusion on, or <code>value:sophos</code> to find and remove all Sophos-related modules.</p>
 </section>
 
 <section id="shortcuts" class="kc-surface rounded-3 p-4 mb-4">
@@ -193,9 +196,7 @@
   <div class="table-responsive"><table class="table table-sm kc-table">
     <tbody>
       <tr><td><kbd>/</kbd></td><td>Search (focuses the search box)</td></tr>
-      <tr><td><kbd>b</kbd></td><td>Build the current profile</td></tr>
-      <tr><td><kbd>p</kbd></td><td>Profile page</td></tr>
-      <tr><td><kbd>l</kbd></td><td>Build list</td></tr>
+      <tr><td><kbd>d</kbd></td><td>Download sysmonconfig.xml</td></tr>
       <tr><td><kbd>c</kbd></td><td>ATT&amp;CK coverage</td></tr>
       <tr><td><kbd>h</kbd> / <kbd>?</kbd></td><td>Help / this list</td></tr>
       <tr><td><kbd>Esc</kbd></td><td>Leave an input field (then the shortcuts work again)</td></tr>
@@ -207,27 +208,35 @@
 
 <section id="deploy" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Deploying</h2>
-  <p>Every successful build has a <strong>Deploy</strong> tab with copyable commands. In short: install once with <code>sysmon64.exe -accepteula -i sysmonconfig.xml</code>, update an existing installation with <code>sysmon64.exe -c sysmonconfig.xml</code> (no reboot), verify with <code>sysmon64.exe -c</code>, and roll back by applying an earlier file or <code>sysmon64.exe -c --</code> for Sysmon's defaults. Events land in <code>Applications and Services Logs → Microsoft → Windows → Sysmon → Operational</code>.</p>
-  <p>Pilot on a few hosts and watch volume for a day before a fleet-wide rollout via GPO, Intune or SCCM. The target Sysmon version chosen in the profile must be the same or older than the binary on the hosts – a newer schema is rejected.</p>
+  <ol class="vsm-deploy">
+    <li><strong>Download</strong> <code>sysmonconfig.xml</code> (footer button) and copy it next to <code>sysmon64.exe</code> on a pilot host. Keep every file you deploy – it is what you roll back to.</li>
+    <li><strong>Install</strong> (first time on a host): <code>sysmon64.exe -accepteula -i sysmonconfig.xml</code></li>
+    <li><strong>Update</strong> an existing installation (no reboot, no reinstall): <code>sysmon64.exe -c sysmonconfig.xml</code></li>
+    <li><strong>Verify</strong> – dump the active configuration and check schema version and rule counts: <code>sysmon64.exe -c</code>. Events land in <code>Applications and Services Logs → Microsoft → Windows → Sysmon → Operational</code>; event 16 confirms the configuration change.</li>
+    <li><strong>Watch volume for a day</strong> on the pilot group, then roll out. Add exclusions for your own noisy software as custom exclude modules and download again.</li>
+    <li><strong>Roll back</strong> by applying an earlier file with <code>-c</code>, or reset to Sysmon's defaults: <code>sysmon64.exe -c --</code></li>
+  </ol>
+  <p>The hosts must run the Sysmon major version chosen in the footer or newer – an older binary rejects the file with a schema error. Distribute <code>sysmon64.exe</code> and the XML with your management tool (GPO startup script or scheduled task, Intune Win32 app / remediation, SCCM package), run the update command as SYSTEM; Sysmon re-reads the configuration without a reboot.</p>
+
 </section>
 
 <section id="tips" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Practical tips</h2>
   <ul>
-    <li><strong>Start from everything, then subtract.</strong> The default profile selects all upstream modules – that corresponds to upstream's published <code>sysmonconfig.xml</code>. Deselect what does not apply (products you do not run) and add exclusions for your own noise.</li>
+    <li><strong>Start from the standard, then subtract.</strong> You begin with upstream's published <code>sysmonconfig.xml</code>. Switch off what does not apply (products you do not run) and add exclusions for your own noise.</li>
     <li><strong>Write exclusions as narrowly as possible</strong>: full path (<code>begin with C:\Program Files\Vendor\</code>) plus, where possible, a second field such as <code>ParentImage</code> or <code>DestinationPort</code>. Exclude wins, so a broad exclusion is the easiest way to lose detections.</li>
     <li><strong>Noisy event types</strong>: ImageLoad (7), ProcessAccess (10), RegistryEvent (12–14) and FileCreate (11) can produce very high volumes. Keep their include modules focused and test on a few hosts first.</li>
     <li><strong>Keep the ATT&amp;CK metadata</strong> in rule names when you add detections; the coverage report and Navigator layer are generated from it.</li>
-    <li><strong>Use a profile per fleet</strong> (servers vs. workstations, Sysmon 13 hosts vs. Sysmon 15 hosts) instead of one file for everything.</li>
+    <li><strong>Different fleets, different files</strong> (servers vs. workstations, Sysmon 13 hosts vs. Sysmon 15 hosts): export your changes as JSON per fleet and import the one you are working on.</li>
     <li><strong>Compare before deploying</strong>: the <em>Diff</em> tab on a build shows which rules and techniques changed compared with the previous build, ignoring pure formatting.</li>
   </ul>
 </section>
 
 <section id="data" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Where the data lives</h2>
-  <p>Everything stays in your browser: profiles and edited/custom modules in <code>localStorage</code>, build outputs in IndexedDB. Nothing is uploaded – the site is static files and a WebAssembly engine. That also means <strong>clearing site data, private windows or another device start from scratch</strong>.</p>
-  <p>Use <strong>Save / Load</strong> (navbar) or the Profile page to <strong>export</strong> one JSON file with all profiles and modules, and <strong>import</strong> it again anywhere – that file is the thing to keep in your own repository. Builds are not part of the export; re-run them after importing.</p>
-  <p>The export references upstream modules by path, so it stays valid across upstream updates; modules that disappear upstream are dropped from profiles on import, and modules you edited keep your version until you reset them.</p>
+  <p>Everything stays in your browser: your selection and edited/custom modules in <code>localStorage</code>. Nothing is uploaded – the site is static files and a WebAssembly engine. That also means <strong>clearing site data, private windows or another device start from scratch</strong>.</p>
+  <p>Use <strong>Save / Load</strong> (footer) to <strong>export</strong> one JSON file with your selection and edited modules, and <strong>import</strong> it again anywhere – that file is the thing to keep in your own repository.</p>
+  <p>The export references upstream modules by path, so it stays valid across upstream updates; modules that disappear upstream are dropped on import, and modules you edited keep your version until you reset them.</p>
 </section>
 
 </div>

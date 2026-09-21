@@ -15,7 +15,6 @@ export const SYSMON_TARGETS = [
 export const SYSMON_VERSIONS = SYSMON_TARGETS.map(t => t.v);
 export const SCHEMA_FOR_VERSION = Object.fromEntries(SYSMON_TARGETS.map(t => [t.v, t.schema]));
 export const DEFAULT_SYSMON_VERSION = "15.20";
-export const MAX_BUILDS = 10;
 
 const now = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 const SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/;
@@ -35,7 +34,7 @@ export function newProfile(slug, name, opts = {}) {
   };
 }
 
-export function emptyState() { return { profiles: {}, current: "", overlay: {}, builds: {}, onboarded: false }; }
+export function emptyState() { return { profiles: {}, current: "", overlay: {} }; }
 
 export function presetProfile(slug, name, preset, extra = {}) {
   return newProfile(slug, name, { modules: [...preset.modules], preset: preset.id, description: preset.tagline || "", ...(preset.options || {}), ...extra });
@@ -88,43 +87,11 @@ export function importState(state, data, mode = "replace") {
   for (const [slug, p] of Object.entries(data.profiles)) if (SLUG_RE.test(slug) && p && Array.isArray(p.modules)) profiles[slug] = { ...newProfile(slug, p.name || slug), ...p, slug };
   for (const [rel, xml] of Object.entries(data.overlay || {})) if (typeof xml === "string" && /^\d[\w]*\/[\w.-]+\.xml$/.test(rel)) overlay[rel] = xml;
   if (mode === "replace") {
-    state.profiles = profiles; state.overlay = overlay; state.builds = {};
+    state.profiles = profiles; state.overlay = overlay;
     state.current = profiles[data.current] ? data.current : Object.keys(profiles)[0] || "";
   } else {
     Object.assign(state.profiles, profiles); Object.assign(state.overlay, overlay);
     if (!state.profiles[state.current]) state.current = Object.keys(state.profiles)[0] || "";
   }
   return { profiles: Object.keys(profiles).length, overlay: Object.keys(overlay).length };
-}
-
-// ── build history (meta in state, XML in IndexedDB) ──────────────────────────
-export function addBuild(state, slug, meta) {
-  const list = state.builds[slug] || (state.builds[slug] = []);
-  list.unshift(meta);
-  const dropped = list.splice(MAX_BUILDS);
-  return dropped.map(b => b.id);
-}
-
-const DB = "vsm-builds", STORE = "xml";
-function openDb() {
-  return new Promise((resolve, reject) => {
-    if (!globalThis.indexedDB) return resolve(null);
-    const req = indexedDB.open(DB, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-const memXml = new Map(); // fallback when IndexedDB is unavailable
-export async function putBuildXml(id, xml) {
-  memXml.set(id, xml);
-  try { const db = await openDb(); if (!db) return; await new Promise((res, rej) => { const tx = db.transaction(STORE, "readwrite"); tx.objectStore(STORE).put(xml, id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch { /* ignore */ }
-}
-export async function getBuildXml(id) {
-  if (memXml.has(id)) return memXml.get(id);
-  try { const db = await openDb(); if (!db) return null; return await new Promise((res, rej) => { const r = db.transaction(STORE).objectStore(STORE).get(id); r.onsuccess = () => res(r.result ?? null); r.onerror = () => rej(r.error); }); } catch { return null; }
-}
-export async function deleteBuildXml(ids) {
-  for (const id of ids) memXml.delete(id);
-  try { const db = await openDb(); if (!db) return; await new Promise((res, rej) => { const tx = db.transaction(STORE, "readwrite"); for (const id of ids) tx.objectStore(STORE).delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch { /* ignore */ }
 }

@@ -32,14 +32,6 @@ test("localStorage persistence uses a pluggable storage", () => {
   assert.equal(S.loadState({ getItem: () => { throw new Error("blocked"); } }).current, "");
 });
 
-test("build history keeps MAX_BUILDS", () => {
-  const state = S.emptyState();
-  let dropped = [];
-  for (let i = 0; i < S.MAX_BUILDS + 2; i++) dropped.push(...S.addBuild(state, "p", { id: "b" + i }));
-  assert.equal(state.builds.p.length, S.MAX_BUILDS);
-  assert.deepEqual(dropped, ["b0", "b1"]);
-});
-
 test("include list parse/format", () => {
   const p = profileWith(["5_process_ended/include_security_process_termination.xml", "1_process_creation/include_clear_windows_event_logs.xml"]);
   const text = formatList(p);
