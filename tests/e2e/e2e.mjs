@@ -22,9 +22,12 @@ const store = fn => page.evaluate(fn);
 // ── landing ──
 await page.goto(base + "/#/", { waitUntil: "networkidle" });
 await page.waitForSelector("#q", { timeout: 15000 });
-step("landing shows only the search box", (await page.locator(".vsm-search--hero").count()) === 1 && (await page.locator(".vsm-hit").count()) === 0 && (await page.locator(".vsm-top").isVisible()) && (await page.locator(".vsm-top-title").innerText()) === "SEARCH" && (await page.locator(".vsm-top-help").isVisible()));
+step("landing shows only the search box", (await page.locator(".vsm-search--hero").count()) === 1 && (await page.locator(".vsm-hit").count()) === 0 && (await page.locator(".vsm-top").isVisible()) && (await page.locator(".vsm-top-title").innerText()) === "SEARCH" && (await page.locator(".vsm-burger").isVisible()));
 step("standard configuration = Balanced", (await store(() => Alpine.store("app").profile.modules.length)) === 433);
-step("footer bar", (await page.locator(".vsm-footer").innerText()).includes("Download sysmonconfig.xml") && (await page.locator(".vsm-footer-status").innerText()) === "Standard configuration · 433 modules");
+await page.click(".vsm-burger"); await page.waitForTimeout(200);
+step("menu", (await page.locator(".vsm-menu-list").innerText()).includes("Download sysmonconfig.xml") && (await page.locator(".vsm-menu-list .dropdown-header").first().innerText()) === "Standard configuration · 433 modules");
+await page.keyboard.press("Escape"); await page.waitForTimeout(200);
+step("footer is attribution", (await page.locator(".vsm-footer").innerText()).includes("Built on sysmon-modular"));
 await shot("landing");
 
 // ── search + toggles ──
@@ -33,9 +36,9 @@ step("hits with sentences", (await page.locator(".vsm-hit").count()) > 5 && (awa
 step("hero collapses", (await page.locator(".vsm-search--hero").count()) === 0);
 const firstSwitch = page.locator(".vsm-hit-module .vsm-switch").first();
 await firstSwitch.uncheck(); await page.waitForTimeout(300);
-step("toggle off → 'off' tag + footer count", (await page.locator(".vsm-hit-module").first().innerText()).includes("off") && (await page.locator(".vsm-footer-status").innerText()) === "432 modules · 1 change from standard");
+step("toggle off → 'off' tag + badge", (await page.locator(".vsm-hit-module").first().innerText()).includes("off") && (await page.locator(".vsm-burger-badge").innerText()) === "1");
 await page.locator(".vsm-hit-module .vsm-switch").first().check(); await page.waitForTimeout(300);
-step("toggle on again", (await page.locator(".vsm-footer-status").innerText()).startsWith("Standard configuration"));
+step("toggle on again", (await page.locator(".vsm-burger-badge").isVisible()) === false);
 await shot("results");
 
 await page.fill("#q", "lsass_noise"); await page.waitForTimeout(500);
@@ -70,7 +73,7 @@ await nameInput.press("ArrowDown"); await nameInput.press("Enter"); await page.w
 step("technique picked", /^technique_id=T1003\.00\d,technique_name=/.test(await nameInput.inputValue()));
 await page.click("button:text-is('Save') >> nth=0");
 await page.waitForFunction(() => document.body.innerText.includes("Saved to overlay"), null, { timeout: 60000 });
-step("editor save validated by engine", (await page.locator("h1 .kc-tag").innerText()) === "edited" && (await page.locator(".vsm-footer-status").innerText()).includes("1 change from standard"));
+step("editor save validated by engine", (await page.locator("h1 .kc-tag").innerText()) === "edited" && (await page.locator(".vsm-burger-badge").innerText()) === "1");
 await shot("editor");
 
 // ── raw ──
@@ -94,17 +97,17 @@ step("sysmonconfig.xml downloaded", dl.suggestedFilename() === "sysmonconfig.xml
 await page.waitForTimeout(400);
 
 // ── footer target ──
-await page.selectOption(".vsm-footer-target select", "14"); await page.waitForTimeout(200);
-await page.click(".vsm-footer button:has-text('Download')");
+await page.click(".vsm-burger"); await page.selectOption(".vsm-menu-target select", "14"); await page.keyboard.press("Escape"); await page.waitForTimeout(200);
+await page.keyboard.press("d");
 await page.waitForSelector("#dl.show", { timeout: 120000 }); await page.waitForTimeout(300);
 step("target change → schema 4.82", (await page.locator("#dl .kc-section-title").innerText()).includes("Sysmon 14 (schema 4.82)"));
 await page.click("#dl button:has-text('Close')"); await page.waitForTimeout(400);
-await page.selectOption(".vsm-footer-target select", "15.20");
+await page.click(".vsm-burger"); await page.selectOption(".vsm-menu-target select", "15.20"); await page.keyboard.press("Escape"); await page.waitForTimeout(200);
 
 // ── coverage + help ──
-await page.click(".vsm-footer a:has-text('Coverage')"); await page.waitForSelector(".vsm-tactic", { timeout: 60000 });
-step("coverage from footer", (await page.locator(".vsm-tactic").count()) >= 10);
-await page.click(".vsm-top-help"); await page.waitForSelector("#help-root section");
+await page.click(".vsm-burger"); await page.click(".vsm-menu-list a:has-text('ATT&CK coverage')"); await page.waitForSelector(".vsm-tactic", { timeout: 60000 });
+step("coverage from menu", (await page.locator(".vsm-tactic").count()) >= 10);
+await page.click(".vsm-burger"); await page.click(".vsm-menu-list a:has-text('Help')"); await page.waitForSelector("#help-root section");
 step("help event table", (await page.locator("#event-table tbody tr").count()) >= 20 && (await page.locator("#cost-table tbody tr").count()) >= 20);
 await page.click("#event-table a:has-text('search') >> nth=0"); await page.waitForTimeout(600);
 step("event table → search cat:", (await store(() => location.hash)).includes("q=cat%3A1") || (await store(() => location.hash)).includes("q=cat:1"));
@@ -116,16 +119,16 @@ step("help section link", scrolled);
 // ── new module via Save/Load menu ──
 await page.goto(base + "/#/new?cat=22_dns_query"); await page.waitForSelector("input[placeholder*='EDR']");
 await page.fill("input[placeholder*='EDR']", "Our DNS test");
-await page.selectOption("select >> nth=1", "exclude");
+await page.selectOption("select[x-model=\"kind\"]", "exclude");
 await page.click("text=Create and edit");
 await page.waitForFunction(() => location.hash.includes("/edit"));
 step("custom module created", (await store(() => location.hash)) === "#/m/22_dns_query/exclude_our_dns_test.xml/edit" && (await page.locator("h1 .kc-tag").innerText()) === "custom");
 
 // ── your changes ──
-await page.click(".vsm-footer-status"); await page.waitForSelector("#changes.show"); await page.waitForTimeout(300);
+await page.click(".vsm-burger"); await page.click(".vsm-menu-list a:has-text('Your changes')"); await page.waitForSelector("#changes.show"); await page.waitForTimeout(300);
 const changesText = await page.locator("#changes .modal-body").innerText();
 step("changes modal lists edits and custom modules", (await page.locator("#changes .kc-section-title").innerText()).startsWith("2 changes") && changesText.includes("Edited modules") && changesText.includes("Custom modules") && changesText.includes("exclude_our_dns_test.xml"));
-step("footer status counts changes", (await page.locator(".vsm-footer-status").innerText()).includes("2 changes from standard"));
+step("badge counts changes", (await page.locator(".vsm-burger-badge").innerText()) === "2");
 await page.click("#changes button:has-text('Close')"); await page.waitForTimeout(400);
 
 // ── export → clear → import; reset ──

@@ -23,13 +23,13 @@ The landing page is a search box. You start from sysmon-modular's standard `sysm
   Sysmon schema, ATT&CK technique autocomplete with a live tag check, and plain-language explanations.
   Saving validates with upstream's validator. **Raw XML** editor with highlighting for everything else.
 - **Overlay** – upstream modules are never changed; your edits and custom modules shadow them.
-- **Download sysmonconfig.xml** (footer, or `d`) – merge + schema validation + analyzer in the browser;
+- **Download sysmonconfig.xml** (menu ☰, or `d`) – merge + schema validation + analyzer in the browser;
   a summary shows findings by severity and a plain-language *Before you deploy* checklist first.
 - **Coverage** – live ATT&CK tactic × technique matrix for your configuration, tagged-vs-untagged rule
   stats, Navigator layer export.
 - **Help** – workflow, event types (what is on, what each event type costs in volume/CPU/disk/privacy),
   how Sysmon include/exclude filtering works, condition operators, search syntax, shortcuts, deploying.
-- **Save / Load** – export your selection and edited modules as one JSON file, import it anywhere,
+- **Menu (☰)** – coverage, help, save / load: export your selection and edited modules as one JSON file, import it anywhere,
   reset to the standard configuration, export an `include_rules.txt` for upstream's CLI.
 
 ## Where your data lives

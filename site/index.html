@@ -23,7 +23,33 @@
   <div class="vsm-top">
     <a class="vsm-top-logo" href="#/" title="Home"><svg width="20" height="23" viewBox="0 0 44 50" fill="none" aria-hidden="true"><path d="M22 6L7 13v11c0 9.18 6.38 17.77 15 20 8.62-2.23 15-10.82 15-20V13L22 6z" fill="rgba(30,95,168,0.6)" stroke="rgba(255,255,255,0.35)" stroke-width="1"/><path d="M14 25l5 5 11-11" stroke="#0a9dd9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span x-text="$store.app.title"></span></a>
     <span class="vsm-top-title" x-text="$store.app.pageTitle"></span>
-    <a class="vsm-top-help" href="#/help" :class="{ active: $store.app.route.page === 'help' }" title="Help (h)">Help</a>
+    <div class="dropdown vsm-menu">
+      <button class="vsm-burger" data-bs-toggle="dropdown" aria-label="Menu" title="Menu">
+        <span class="vsm-burger-lines" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="vsm-burger-badge" x-show="$store.app.changeCount" x-text="$store.app.changeCount" title="Changes from the standard configuration"></span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end vsm-menu-list">
+        <li><h6 class="dropdown-header" x-text="$store.app.statusLine"></h6></li>
+        <li><a class="dropdown-item fw-bold" href="#" @click.prevent="$store.app.download()">⬇ Download sysmonconfig.xml <kbd class="ms-1">d</kbd></a></li>
+        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.showChanges()">Your changes from standard…</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#/" :class="{ active: $store.app.route.page === 'search' }">Search <kbd class="ms-1">/</kbd></a></li>
+        <li><a class="dropdown-item" href="#/coverage" :class="{ active: $store.app.route.page === 'coverage' }">ATT&amp;CK coverage <kbd class="ms-1">c</kbd></a></li>
+        <li><a class="dropdown-item" href="#/help" :class="{ active: $store.app.route.page === 'help' }">Help <kbd class="ms-1">h</kbd></a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><h6 class="dropdown-header">Save / load – your changes live only in this browser</h6></li>
+        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.exportAll()">⬇ Export changes (JSON)</a></li>
+        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.importMode = 'replace'; $refs.importFile.click()">⬆ Import – replace</a></li>
+        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.importMode = 'merge'; $refs.importFile.click()">⬆ Import – merge</a></li>
+        <li><a class="dropdown-item" href="#/new">+ New custom module</a></li>
+        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.exportList()">⬇ include_rules.txt (for upstream's CLI)</a></li>
+        <li><a class="dropdown-item text-danger" href="#" @click.prevent="$store.app.resetToStandard()">Reset to standard configuration…</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li class="px-3 py-1"><label class="vsm-menu-target">Sysmon target <button x-help="'The Sysmon binary the file will be loaded on. Decides the schema version and which events/fields are allowed – newer ones are removed so the file loads. Run <code>sysmon64</code> on a host to see its version.'"></button>
+          <select class="form-select form-select-sm mt-1" :value="$store.app.profile.sysmon_version" @change="$store.app.setTarget($event.target.value)" @click.stop><template x-for="t in $store.app.sysmonTargets" :key="t.v"><option :value="t.v" x-text="t.label + ' · schema ' + t.schema"></option></template></select></label></li>
+        <input type="file" accept=".json" class="d-none" x-ref="importFile" @change="$store.app.importFromInput($event)">
+      </ul>
+    </div>
   </div>
 
   <main class="vsm-main">
@@ -298,29 +324,12 @@
     </template>
   </main>
 
-  <!-- ═══════════ FOOTER BAR ═══════════ -->
+  <!-- ═══════════ FOOTER (attribution) ═══════════ -->
   <footer class="vsm-footer">
-    <button class="btn btn-sm btn-primary fw-bold" @click="$store.app.download()" :disabled="!!$store.app.busy" title="Merge your configuration and download sysmonconfig.xml (d)">⬇ Download sysmonconfig.xml</button>
-    <a href="#/coverage" class="vsm-footer-link" :class="{ active: $store.app.route.page === 'coverage' }">Coverage</a>
-    <div class="dropup">
-      <a href="#" class="vsm-footer-link dropdown-toggle" data-bs-toggle="dropdown">Save / Load</a>
-      <ul class="dropdown-menu">
-        <li><h6 class="dropdown-header">Your changes live only in this browser</h6></li>
-        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.exportAll()">⬇ Export changes (JSON)</a></li>
-        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.importMode = 'replace'; $refs.importFile.click()">⬆ Import – replace</a></li>
-        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.importMode = 'merge'; $refs.importFile.click()">⬆ Import – merge</a></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.showChanges()">Your changes from standard…</a></li>
-        <li><a class="dropdown-item" href="#/new">+ New custom module</a></li>
-        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.exportList()">⬇ include_rules.txt (for upstream's CLI)</a></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item text-danger" href="#" @click.prevent="$store.app.resetToStandard()">Reset to standard configuration…</a></li>
-        <input type="file" accept=".json" class="d-none" x-ref="importFile" @change="$store.app.importFromInput($event)">
-      </ul>
-    </div>
-    <label class="vsm-footer-target">Sysmon <select class="form-select form-select-sm" :value="$store.app.profile.sysmon_version" @change="$store.app.setTarget($event.target.value)"><template x-for="t in $store.app.sysmonTargets" :key="t.v"><option :value="t.v" x-text="t.label.replace('Sysmon ', '') + ' · ' + t.schema"></option></template></select></label>
-    <a href="#" class="vsm-footer-status" @click.prevent="$store.app.showChanges()" title="Show what differs from the standard configuration" x-text="$store.app.statusLine"></a>
-    <a class="vsm-footer-upstream" :href="$store.app.upstream.commit_url" target="_blank" rel="noopener" :title="'sysmon-modular ' + $store.app.upstream.date">upstream <code x-text="$store.app.upstream.short"></code></a>
+    Built on <a href="https://github.com/olafhartong/sysmon-modular" target="_blank" rel="noopener">sysmon-modular</a> by Olaf Hartong &amp; contributors
+    (upstream <a :href="$store.app.upstream.commit_url" target="_blank" rel="noopener"><code x-text="$store.app.upstream.short"></code></a>, <span x-text="$store.app.upstream.date"></span>) ·
+    merge, validation and ATT&amp;CK coverage run upstream's tooling as WebAssembly, entirely in your browser ·
+    <a href="https://github.com/KommuneCERT/visual-sysmon-modular" target="_blank" rel="noopener">source</a>
   </footer>
 
   <!-- ═══════════ DOWNLOAD MODAL ═══════════ -->
