@@ -311,6 +311,7 @@
         <li><a class="dropdown-item" href="#" @click.prevent="$store.app.importMode = 'replace'; $refs.importFile.click()">⬆ Import – replace</a></li>
         <li><a class="dropdown-item" href="#" @click.prevent="$store.app.importMode = 'merge'; $refs.importFile.click()">⬆ Import – merge</a></li>
         <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#" @click.prevent="$store.app.showChanges()">Your changes from standard…</a></li>
         <li><a class="dropdown-item" href="#/new">+ New custom module</a></li>
         <li><a class="dropdown-item" href="#" @click.prevent="$store.app.exportList()">⬇ include_rules.txt (for upstream's CLI)</a></li>
         <li><hr class="dropdown-divider"></li>
@@ -319,7 +320,7 @@
       </ul>
     </div>
     <label class="vsm-footer-target">Sysmon <select class="form-select form-select-sm" :value="$store.app.profile.sysmon_version" @change="$store.app.setTarget($event.target.value)"><template x-for="t in $store.app.sysmonTargets" :key="t.v"><option :value="t.v" x-text="t.label.replace('Sysmon ', '') + ' · ' + t.schema"></option></template></select></label>
-    <span class="vsm-footer-status" x-text="$store.app.statusLine"></span>
+    <a href="#" class="vsm-footer-status" @click.prevent="$store.app.showChanges()" title="Show what differs from the standard configuration" x-text="$store.app.statusLine"></a>
     <a class="vsm-footer-upstream" :href="$store.app.upstream.commit_url" target="_blank" rel="noopener" :title="'sysmon-modular ' + $store.app.upstream.date">upstream <code x-text="$store.app.upstream.short"></code></a>
   </footer>
 
@@ -350,6 +351,43 @@
           </div>
         </div>
       </template>
+    </div></div>
+  </div>
+
+  <!-- ═══════════ CHANGES MODAL ═══════════ -->
+  <div class="modal fade" id="changes" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+      <div class="modal-header"><div><div class="kc-section-tag">Compared with sysmon-modular's standard configuration</div><h2 class="kc-section-title mb-0" x-text="$store.app.changeCount ? $store.app.changeCount + ' change' + ($store.app.changeCount === 1 ? '' : 's') : 'No changes'"></h2></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body vsm-changes">
+        <p class="text-muted small" x-show="!$store.app.changeCount">You are on the standard configuration. Search for something, switch a module off or edit a rule – the differences appear here.</p>
+        <template x-for="sec in [['edited', 'Edited modules', 'Your copy shadows the upstream module'], ['custom', 'Custom modules', 'Exist only in your configuration'], ['off', 'Switched off', 'Part of the standard configuration, not in yours'], ['on', 'Switched on', 'Not in the standard configuration, added to yours']]" :key="sec[0]">
+          <div class="mb-3" x-show="$store.app.changes[sec[0]].length">
+            <h3 class="h6 mb-1"><span x-text="sec[1]"></span> <span class="kc-tag" x-text="$store.app.changes[sec[0]].length"></span> <span class="text-muted small fw-normal" x-text="'– ' + sec[2]"></span></h3>
+            <ul class="list-unstyled mb-0">
+              <template x-for="m in $store.app.changes[sec[0]]" :key="m.rel">
+                <li class="vsm-change">
+                  <span class="kc-severity" :class="m.kind === 'exclude' ? 'kc-severity-medium' : 'kc-severity-info'" x-text="m.kind"></span>
+                  <a :href="'#/m/' + m.rel + '/edit'" data-bs-dismiss="modal"><code x-text="m.rel"></code></a>
+                  <span class="text-muted small text-truncate" x-text="m.title"></span>
+                  <span class="ms-auto btn-group btn-group-sm">
+                    <a class="btn btn-outline-primary py-0" :href="'#/m/' + m.rel + '/edit'" data-bs-dismiss="modal">Edit</a>
+                    <a class="btn btn-outline-secondary py-0" :href="'#/m/' + m.rel + '/raw'" data-bs-dismiss="modal">XML</a>
+                    <button class="btn btn-outline-secondary py-0" x-show="sec[0] === 'off'" @click="$store.app.toggle(m.rel, true)">Switch on</button>
+                    <button class="btn btn-outline-secondary py-0" x-show="sec[0] === 'on'" @click="$store.app.toggle(m.rel, false)">Switch off</button>
+                    <button class="btn btn-outline-danger py-0" x-show="sec[0] === 'edited'" @click="confirm('Reset ' + m.filename + ' to the upstream version?') && $store.app.revert(m.rel)">Reset</button>
+                    <button class="btn btn-outline-danger py-0" x-show="sec[0] === 'custom'" @click="confirm('Delete your custom module ' + m.filename + '?') && $store.app.revert(m.rel)">Delete</button>
+                  </span>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </template>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link text-danger me-auto" x-show="$store.app.changeCount" @click="$store.app.resetToStandard()" data-bs-dismiss="modal">Reset everything to standard…</button>
+        <button type="button" class="btn btn-outline-secondary" @click="$store.app.exportAll()">⬇ Export changes</button>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
     </div></div>
   </div>
 

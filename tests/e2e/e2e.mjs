@@ -24,7 +24,7 @@ await page.goto(base + "/#/", { waitUntil: "networkidle" });
 await page.waitForSelector("#q", { timeout: 15000 });
 step("landing shows only the search box", (await page.locator(".vsm-search--hero").count()) === 1 && (await page.locator(".vsm-hit").count()) === 0 && (await page.locator(".vsm-top").isVisible()) === false);
 step("standard configuration = Balanced", (await store(() => Alpine.store("app").profile.modules.length)) === 433);
-step("footer bar", (await page.locator(".vsm-footer").innerText()).includes("Download sysmonconfig.xml") && (await page.locator(".vsm-footer-status").innerText()).startsWith("433 of 441"));
+step("footer bar", (await page.locator(".vsm-footer").innerText()).includes("Download sysmonconfig.xml") && (await page.locator(".vsm-footer-status").innerText()) === "433 of 441 modules · standard configuration");
 await shot("landing");
 
 // ── search + toggles ──
@@ -33,7 +33,7 @@ step("hits with sentences", (await page.locator(".vsm-hit").count()) > 5 && (awa
 step("hero collapses", (await page.locator(".vsm-search--hero").count()) === 0);
 const firstSwitch = page.locator(".vsm-hit-module .vsm-switch").first();
 await firstSwitch.uncheck(); await page.waitForTimeout(300);
-step("toggle off → 'off' tag + footer count", (await page.locator(".vsm-hit-module").first().innerText()).includes("off") && (await page.locator(".vsm-footer-status").innerText()).startsWith("432 of 441"));
+step("toggle off → 'off' tag + footer count", (await page.locator(".vsm-hit-module").first().innerText()).includes("off") && (await page.locator(".vsm-footer-status").innerText()).startsWith("432 of 441 modules · 1 change"));
 await page.locator(".vsm-hit-module .vsm-switch").first().check(); await page.waitForTimeout(300);
 step("toggle on again", (await page.locator(".vsm-footer-status").innerText()).startsWith("433 of 441"));
 await shot("results");
@@ -70,7 +70,7 @@ await nameInput.press("ArrowDown"); await nameInput.press("Enter"); await page.w
 step("technique picked", /^technique_id=T1003\.00\d,technique_name=/.test(await nameInput.inputValue()));
 await page.click("button:text-is('Save') >> nth=0");
 await page.waitForFunction(() => document.body.innerText.includes("Saved to overlay"), null, { timeout: 60000 });
-step("editor save validated by engine", (await page.locator("h1 .kc-tag").innerText()) === "edited" && (await page.locator(".vsm-footer-status").innerText()).includes("1 edited"));
+step("editor save validated by engine", (await page.locator("h1 .kc-tag").innerText()) === "edited" && (await page.locator(".vsm-footer-status").innerText()).includes("1 change from standard"));
 await shot("editor");
 
 // ── raw ──
@@ -120,6 +120,13 @@ await page.selectOption("select >> nth=1", "exclude");
 await page.click("text=Create and edit");
 await page.waitForFunction(() => location.hash.includes("/edit"));
 step("custom module created", (await store(() => location.hash)) === "#/m/22_dns_query/exclude_our_dns_test.xml/edit" && (await page.locator("h1 .kc-tag").innerText()) === "custom");
+
+// ── your changes ──
+await page.click(".vsm-footer-status"); await page.waitForSelector("#changes.show"); await page.waitForTimeout(300);
+const changesText = await page.locator("#changes .modal-body").innerText();
+step("changes modal lists edits and custom modules", (await page.locator("#changes .kc-section-title").innerText()).startsWith("2 changes") && changesText.includes("Edited modules") && changesText.includes("Custom modules") && changesText.includes("exclude_our_dns_test.xml"));
+step("footer status counts changes", (await page.locator(".vsm-footer-status").innerText()).includes("2 changes from standard"));
+await page.click("#changes button:has-text('Close')"); await page.waitForTimeout(400);
 
 // ── export → clear → import; reset ──
 const [exp] = await Promise.all([page.waitForEvent("download"), store(() => Alpine.store("app").exportAll())]);

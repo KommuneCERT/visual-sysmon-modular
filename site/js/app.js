@@ -145,8 +145,23 @@ document.addEventListener("alpine:init", () => {
     get hasQuery() { return !!(this.route.query.q || "").trim() || !!this.lastQuery.trim(); },
     get searchHref() { return this.lastQuery ? `#/?q=${encodeURIComponent(this.lastQuery)}` : "#/"; },
     get pageTitle() { return ({ editor: "Rule editor", raw: "Raw XML", newModule: "New module", coverage: "ATT&CK coverage", help: "Help" })[this.route.page] || ""; },
-    get statusLine() { this.tick; const e = this.overlayRels.length; return `${this.selected.size} of ${this.moduleTotal} modules${e ? ` · ${e} edited` : ""}`; },
+    get statusLine() { this.tick; const n = this.changeCount; return `${this.selected.size} of ${this.moduleTotal} modules · ${n ? `${n} change${n === 1 ? "" : "s"} from standard` : "standard configuration"}`; },
     get dlChecklist() { return this.dl ? checklist(vsm.catalog, A.raw(this.profile), this.dl.meta) : []; },
+    // differences from the standard configuration, for the "Your changes" panel
+    get changes() {
+      this.tick;
+      const std = new Set((vsm.catalog.presets.find(p => p.id === "balanced") || { modules: vsm.catalog.allRels() }).modules);
+      const sel = this.selected;
+      const mod = rel => vsm.catalog.module(rel);
+      return {
+        edited: this.overlayRels.filter(r => vsm.catalog.sourceOf(r) === "edited").map(mod),
+        custom: this.overlayRels.filter(r => vsm.catalog.sourceOf(r) === "custom").map(mod),
+        off: [...std].filter(r => !sel.has(r) && vsm.catalog.exists(r)).sort().map(mod),
+        on: [...sel].filter(r => !std.has(r) && vsm.catalog.sourceOf(r) !== "custom").sort().map(mod),
+      };
+    },
+    get changeCount() { const c = this.changes; return c.edited.length + c.custom.length + c.off.length + c.on.length; },
+    showChanges() { new window.bootstrap.Modal(document.getElementById("changes")).show(); },
     volumeOf: cat => { const c = costOf(cat); return { level: c.volume, disk: c.disk === "high", why: c.why }; },
     costOf, costTags,
 
