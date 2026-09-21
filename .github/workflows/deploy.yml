@@ -1,7 +1,10 @@
 name: Deploy to GitHub Pages
+# GitHub Pages is deployed from the `next` branch (the branch under active development).
+# `main` is the stable reference (tag v1.0-modular-ui) and does not deploy. To go back to
+# deploying main, change the branch below on the branch that should be live.
 on:
   push:
-    branches: [main]
+    branches: [next]
   workflow_dispatch:
 permissions:
   contents: read
