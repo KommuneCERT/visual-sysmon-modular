@@ -45,7 +45,7 @@ await page.fill("#q", "lsass_noise"); await page.waitForTimeout(500);
 step("module-level hit", (await page.locator(".vsm-hit-ctx").first().innerText()).includes("whole module"));
 
 await page.click("label[for='scope-all']");
-await page.fill("#q", "kind:exclude event:22 -google"); await page.waitForTimeout(500);
+await page.fill("#q", "onmatch:exclude event:22 -google"); await page.waitForTimeout(500);
 const modulesHit = parseInt((await page.locator(".kc-tag:has-text(' modules'):not(:has-text('hits'))").innerText()), 10);
 const before = await store(() => Alpine.store("app").selected.size);
 await page.click("button:has-text('Switch off')"); await page.waitForTimeout(300);

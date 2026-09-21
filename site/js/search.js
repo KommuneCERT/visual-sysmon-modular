@@ -5,17 +5,16 @@
 //   "some phrase"   phrase with spaces
 //   -word           must NOT appear
 //   /regex/         JavaScript regular expression (also -/regex/)
-//   kind:include|exclude      module type
-//   event:1 | event:dns | event:ProcessCreate   event ID, name part or Sysmon element (cat: is an alias)
-//   onmatch:include|exclude
-//   field:CommandLine         a condition on this field   op:"contains any"     condition operator
-//   tech:T1059 | tech:T1059.001  ATT&CK id (prefix)    value:powershell        substring of a value only
+//   event:1 | event:dns | event:ProcessCreate   event ID, name part or Sysmon element
+//   onmatch:include|exclude   include or exclude blocks (and, for whole-module hits, include_/exclude_ modules)
+//   field:CommandLine         a condition on this field     condition:"contains any"   condition operator
+//   technique:T1059           ATT&CK id (prefix)            value:powershell           substring of a value only
 import { ruleToXml, conditionToXml, ruleTechnique } from "./model.js";
 import { kindOf } from "./catalog.js";
 import { describeRule, describeCondition } from "./describe.js";
 
 export const MAX_HITS = 150;
-const FILTER_KEYS = ["kind", "cat", "event", "onmatch", "field", "op", "tech", "value"];
+const FILTER_KEYS = ["event", "onmatch", "field", "condition", "technique", "value"];
 
 export function parseQuery(q) {
   const terms = [], filters = {};
@@ -29,7 +28,7 @@ export function parseQuery(q) {
     if (regex !== undefined) { try { terms.push({ neg, re: new RegExp(regex, "i") }); } catch { terms.push({ neg, text: regex.toLowerCase() }); } }
     else if (raw) terms.push({ neg, text: raw.toLowerCase() });
   }
-  return { terms, filters, hasBlockFilter: ["event", "onmatch", "field", "op", "tech", "value"].some(k => k in filters) };
+  return { terms, filters, hasBlockFilter: ["event", "field", "condition", "technique", "value"].some(k => k in filters) };
 }
 
 const hit = (t, hay) => (t.re ? t.re.test(hay) : hay.includes(t.text));
@@ -43,7 +42,7 @@ function contentHit(terms, ctxHay, content) {
 }
 function moduleHit(terms, hay) { return terms.every(t => (t.neg ? !hit(t, hay) : hit(t, hay))); }
 
-// event:1 / cat:1 → exactly event ID 1 (never 10, 11, 12…); event:dns → name part; event:ProcessCreate → element name (handled per block)
+// event:1 → exactly event ID 1 (never 10, 11, 12…); event:dns → name part; event:ProcessCreate → element name (handled per block)
 function catMatches(cat, want) {
   const m = /^(\d+(?:_\d+)*)_(.*)$/.exec(cat);
   if (!m) return cat.includes(want);
@@ -52,26 +51,24 @@ function catMatches(cat, want) {
 }
 function condFilters(f, conds) {
   if (f.field && !conds.some(c => c.field.toLowerCase() === f.field)) return false;
-  if (f.op && !conds.some(c => (c.condition || "is").toLowerCase() === f.op)) return false;
+  if (f.condition && !conds.some(c => (c.condition || "is").toLowerCase() === f.condition)) return false;
   if (f.value && !conds.some(c => (c.value || "").toLowerCase().includes(f.value))) return false;
   return true;
 }
-const techMatches = (f, tech) => !f.tech || (tech && tech[0].toLowerCase().startsWith(f.tech));
+const techMatches = (f, tech) => !f.technique || (tech && tech[0].toLowerCase().startsWith(f.technique));
 
-export function search(catalog, profile, { q = "", kind = "", category = "", scope = "selected" } = {}) {
+export function search(catalog, profile, { q = "", scope = "selected" } = {}) {
   const { terms, filters: f, hasBlockFilter } = parseQuery(q);
-  if (kind) f.kind = kind;
   const selected = new Set(profile.modules);
   let rels = scope === "selected" ? [...selected].sort() : catalog.allRels();
-  if (category) rels = rels.filter(r => r.split("/")[0] === category);
-  if (f.cat) rels = rels.filter(r => catMatches(r.split("/")[0], f.cat));
   // event: accepts an event ID or name part (narrows modules) as well as a Sysmon element name (narrows blocks)
   let elementFilter = "";
   if (f.event) {
     const byDir = rels.filter(r => catMatches(r.split("/")[0], f.event));
     if (byDir.length) rels = byDir; else elementFilter = f.event;
   }
-  if (f.kind === "include" || f.kind === "exclude") rels = rels.filter(r => kindOf(r) === f.kind);
+  // onmatch narrows blocks below; a module whose file type says otherwise cannot contribute a whole-module hit
+  if (f.onmatch === "include" || f.onmatch === "exclude") rels = rels.filter(r => kindOf(r) === f.onmatch || kindOf(r) === "other");
 
   const hits = [];
   let total = 0;

@@ -68,8 +68,8 @@
                    placeholder="Search the configuration – e.g. lsass, T1003, powershell -enc, event:22 -google …">
           </div>
           <div class="vsm-search-tips">
-            <span>Tip: <code>-word</code> · <code>/regex/</code> · <code>"phrase"</code> · <code>kind:</code> · <code>event:</code> · <code>field:</code> · <code>tech:</code> · <a href="#/help/search">Syntax</a></span>
-            <span class="vsm-search-examples">Try <a href="#" @click.prevent="q='lsass'">lsass</a> · <a href="#" @click.prevent="q='tech:T1059'">tech:T1059</a> · <a href="#" @click.prevent="q='kind:exclude event:22'">kind:exclude event:22</a> · <a href="#" @click.prevent="q='field:CommandLine -enc'">field:CommandLine -enc</a></span>
+            <span>Tip: <code>-word</code> · <code>/regex/</code> · <code>"phrase"</code> · <code>event:</code> · <code>onmatch:</code> · <code>field:</code> · <code>technique:</code> · <a href="#/help/search">Syntax</a></span>
+            <span class="vsm-search-examples">Try <a href="#" @click.prevent="q='lsass'">lsass</a> · <a href="#" @click.prevent="q='technique:T1059'">technique:T1059</a> · <a href="#" @click.prevent="q='onmatch:exclude event:22'">onmatch:exclude event:22</a> · <a href="#" @click.prevent="q='field:CommandLine -enc'">field:CommandLine -enc</a></span>
           </div>
           <p class="vsm-hero-note" x-show="!q.trim()">You are looking at sysmon-modular's standard configuration – <span x-text="$store.app.selected.size"></span> of its <span x-text="$store.app.moduleTotal"></span> modules; the rest (FileDelete archiving) is off by design. Search for what you want to change, switch modules on or off, edit rules – then <a href="#" @click.prevent="$store.app.download()">download your sysmonconfig.xml</a>. Everything runs in your browser.</p>
         </div>

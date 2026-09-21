@@ -38,11 +38,11 @@ test("module-level hit when only the path matches", () => {
 });
 
 test("filters and scope", () => {
-  const r = search(catalog, all, { q: "lsass", kind: "include", category: "10_process_access" });
-  assert.ok(r.hits.length && r.hits.every(h => h.kind === "include" && h.category === "10_process_access"));
+  const r = search(catalog, all, { q: "lsass onmatch:include event:10" });
+  assert.ok(r.hits.length && r.hits.every(h => h.onmatch === "include" && h.category === "10_process_access"));
   const empty = profileWith([]);
   assert.equal(search(catalog, empty, { q: "wevtutil" }).total, 0);
   assert.ok(search(catalog, empty, { q: "wevtutil", scope: "all" }).total >= 1);
-  const browse = search(catalog, all, { kind: "exclude", category: "22_dns_query" });
+  const browse = search(catalog, all, { q: "onmatch:exclude event:22" });
   assert.ok(browse.total > 0 && browse.hits.filter(h => h.block !== "module").every(h => h.onmatch === "exclude"));
 });

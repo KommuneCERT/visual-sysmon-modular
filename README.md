@@ -15,7 +15,7 @@ The landing page is a search box. You start from sysmon-modular's standard `sysm
 (the "Balanced" selection) and change it from the search results:
 
 - **Search** as you type – free text, ATT&CK IDs, field names, values, with a small query syntax
-  (`-word`, `/regex/`, `"phrase"`, `kind:` `cat:` `event:` `onmatch:` `field:` `op:` `tech:` `value:`).
+  (`-word`, `/regex/`, `"phrase"`, `event:` `onmatch:` `field:` `condition:` `technique:` `value:`).
   Every hit is the matching `<Rule>`/condition in context (module → RuleGroup → event), explained in
   plain words and syntax-highlighted, with a **switch** to take the module in or out of your
   configuration and **Edit / XML** buttons.
