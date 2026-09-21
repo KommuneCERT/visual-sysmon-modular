@@ -16,7 +16,6 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 .vsm-burger:hover, .vsm-burger[aria-expanded="true"] { background: rgba(255,255,255,.12); }
 .vsm-burger-lines { display: flex; flex-direction: column; gap: 4px; }
 .vsm-burger-lines i { display: block; width: 20px; height: 2px; background: #fff; border-radius: 1px; }
-.vsm-burger-badge { position: absolute; top: 0; right: 0; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--kc-amber); color: var(--kc-navy); font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
 .vsm-menu-list { min-width: 300px; font-size: 13.5px; }
 .vsm-menu-list kbd { float: right; margin-top: 2px; }
 .vsm-menu-list .dropdown-header { white-space: normal; }

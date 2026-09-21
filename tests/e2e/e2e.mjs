@@ -36,9 +36,9 @@ step("hits with sentences", (await page.locator(".vsm-hit").count()) > 5 && (awa
 step("hero collapses", (await page.locator(".vsm-search--hero").count()) === 0);
 const firstSwitch = page.locator(".vsm-hit-module .vsm-switch").first();
 await firstSwitch.uncheck(); await page.waitForTimeout(300);
-step("toggle off → 'off' tag + badge", (await page.locator(".vsm-hit-module").first().innerText()).includes("off") && (await page.locator(".vsm-burger-badge").innerText()) === "1");
+step("toggle off → 'off' tag + status", (await page.locator(".vsm-hit-module").first().innerText()).includes("off") && (await store(() => Alpine.store("app").statusLine)) === "432 modules · 1 change from standard");
 await page.locator(".vsm-hit-module .vsm-switch").first().check(); await page.waitForTimeout(300);
-step("toggle on again", (await page.locator(".vsm-burger-badge").isVisible()) === false);
+step("toggle on again", (await store(() => Alpine.store("app").statusLine)) === "Standard configuration · 433 modules");
 await shot("results");
 
 await page.fill("#q", "lsass_noise"); await page.waitForTimeout(500);
@@ -73,7 +73,7 @@ await nameInput.press("ArrowDown"); await nameInput.press("Enter"); await page.w
 step("technique picked", /^technique_id=T1003\.00\d,technique_name=/.test(await nameInput.inputValue()));
 await page.click("button:text-is('Save') >> nth=0");
 await page.waitForFunction(() => document.body.innerText.includes("Saved to overlay"), null, { timeout: 60000 });
-step("editor save validated by engine", (await page.locator("h1 .kc-tag").innerText()) === "edited" && (await page.locator(".vsm-burger-badge").innerText()) === "1");
+step("editor save validated by engine", (await page.locator("h1 .kc-tag").innerText()) === "edited" && (await store(() => Alpine.store("app").changeCount)) === 1);
 await shot("editor");
 
 // ── raw ──
@@ -128,7 +128,7 @@ step("custom module created", (await store(() => location.hash)) === "#/m/22_dns
 await page.click(".vsm-burger"); await page.click(".vsm-menu-list a:has-text('Your changes')"); await page.waitForSelector("#changes.show"); await page.waitForTimeout(300);
 const changesText = await page.locator("#changes .modal-body").innerText();
 step("changes modal lists edits and custom modules", (await page.locator("#changes .kc-section-title").innerText()).startsWith("2 changes") && changesText.includes("Edited modules") && changesText.includes("Custom modules") && changesText.includes("exclude_our_dns_test.xml"));
-step("badge counts changes", (await page.locator(".vsm-burger-badge").innerText()) === "2");
+step("status counts changes", (await store(() => Alpine.store("app").statusLine)).includes("2 changes from standard"));
 await page.click("#changes button:has-text('Close')"); await page.waitForTimeout(400);
 
 // ── export → clear → import; reset ──
