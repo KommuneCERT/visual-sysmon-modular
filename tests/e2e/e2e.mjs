@@ -43,7 +43,7 @@ await page.fill("#q", "lsass_noise"); await page.waitForTimeout(500);
 step("module-level hit", (await page.locator(".vsm-hit-ctx").first().innerText()).includes("whole module"));
 
 // ── search syntax + bulk actions ──
-await page.selectOption("select[title='Which modules to search']", "all");
+await page.click("label[for='scope-all']");
 await page.fill("#q", "kind:exclude cat:22 -google"); await page.waitForTimeout(500);
 const hitMods = await page.evaluate(() => [...new Set([...document.querySelectorAll(".vsm-hit-path code")].map(e => e.textContent))]);
 step("query syntax filters", hitMods.length > 3 && hitMods.every(r => r.startsWith("22_dns_query/exclude_") && !/google/.test(r)), `${hitMods.length} modules`);
@@ -71,6 +71,9 @@ const before = await page.evaluate(() => Alpine.store("app").selected.size);
 await page.locator(".vsm-card .vsm-switch").first().uncheck(); await page.waitForTimeout(200);
 step("toggle off persists", (await page.evaluate(() => Alpine.store("app").selected.size)) === before - 1);
 await page.locator(".vsm-card .vsm-switch").first().check();
+await page.click("button.dropdown-toggle:has-text('Select')"); await page.click("button.dropdown-item:has-text('Deselect all in this category')"); await page.waitForTimeout(200);
+step("category Select ▾ deselects", (await page.evaluate(() => Alpine.store("app").sidebar.find(r => r.cat.dirname === "7_image_load").selected)) === 0);
+await page.click("button.dropdown-toggle:has-text('Select')"); await page.click("button.dropdown-item:has-text('All modules in this category')"); await page.waitForTimeout(200);
 
 // ── editor: explain + save via WASM ──
 await page.goto(base + "/#/m/1_process_creation/include_clear_windows_event_logs.xml/edit"); await page.waitForTimeout(500);
@@ -101,6 +104,7 @@ step("raw save blocked on SYS202", (await page.locator(".vsm-findings").innerTex
 await page.click("nav button:has-text('▶ Build')");
 await hashIs(/^#\/build\//); await page.waitForTimeout(600);
 step("build ok, deploy tab default", (await page.locator("h1 .kc-severity").innerText()) === "OK" && (await page.locator(".nav-tabs .nav-link.active").innerText()) === "Deploy");
+step("five tabs, no log", (await page.locator(".nav-tabs .nav-link").count()) === 5);
 step("deploy commands", (await page.locator(".vsm-cmd").count()) === 4);
 await page.click(".nav-tabs >> text=Coverage"); await page.waitForTimeout(300);
 step("matrix in build", (await page.locator(".vsm-tactic").count()) >= 10);
@@ -132,8 +136,8 @@ const exportPath = await dl.path();
 await page.evaluate(() => localStorage.clear());
 await page.reload(); await page.waitForSelector(".vsm-catlist a");
 await page.click("#wizard button:has-text('Skip')").catch(() => {});
-await page.goto(base + "/#/profile"); await page.waitForTimeout(300);
-await page.setInputFiles("input[type=file][accept='.json']", exportPath); await page.waitForTimeout(500);
+await page.evaluate(() => { Alpine.store("app").importMode = "replace"; });
+await page.setInputFiles("input[type=file][accept='.json']", exportPath); await page.waitForTimeout(600);
 step("export → clear → import restores overlay + profile", (await page.evaluate(() => Alpine.store("app").overlayRels.length)) === 1 && (await page.evaluate(() => Alpine.store("app").profiles.map(p => p.slug))).includes("ws-pilot"));
 
 console.log(`console errors: ${errors.length}`); errors.forEach(e => console.log("  ", e.slice(0, 200)));

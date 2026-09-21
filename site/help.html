@@ -49,7 +49,7 @@
     <dt>Excludes only</dt><dd><code>sysmonconfig-excludes-only.xml</code>: only the noise-exclusion modules, so every event type is logged except known noise. <strong>Use for</strong> research and lab hosts; very high volume.</dd>
   </dl>
   <p><strong>Server roles</strong> (domain controllers, SQL, Exchange/IIS, RDS…) do not need their own presets: Sysmon records the same event types on every Windows host, and the detection modules apply everywhere. What differs per role is the <em>noise</em> – database agents, backup, web workers – so start from Balanced and add your own <em>exclude</em> modules for the software on those hosts. Role-specific security telemetry (Kerberos, mailbox access, HTTP requests) comes from the Windows Security log and the application logs, not from Sysmon.</p>
-  <p>The preset settings also mirror upstream's release build: comments preserved and unsupported events/fields <em>removed</em> for the chosen Sysmon target. Everything can be changed afterwards – a preset is just the starting selection.</p>
+  <p>Builds follow upstream's release settings: comments are preserved, the analyzer always runs, and – when the profile's <em>remove unsupported</em> option is on (default) – events and fields newer than the chosen Sysmon target are stripped. A preset is just the starting selection; every module can be changed afterwards.</p>
   <p>The <strong>Before you deploy</strong> list on the Profile and build pages turns common pitfalls into plain-language notes: empty or exclude-only selections, high-volume event types (ImageLoad, ProcessAccess, Registry – marked with a red <em>high</em> tag in the sidebar; hover it for the reason) without their exclusions, target-version mismatches, analyzer hints and a profile changed after its last build.</p>
 </section>
 
@@ -145,12 +145,12 @@
       <tr><td>15.x</td><td>4.90 / 4.91</td><td>FileExecutableDetected</td></tr>
     </tbody>
   </table></div>
-  <p>A module's own <code>schemaversion</code> only matters for the module file itself; the merged file uses the profile's target. <code>sysmon64 -s</code> prints the schema of an installed binary if you need to check which fields it knows.</p>
+  <p>A module's own <code>schemaversion</code> only matters for the module file itself; the merged file always uses the profile's target. The rule editor sets it automatically to the lowest schema that supports the events the module uses, so you never need to touch it (the raw XML editor still lets you). <code>sysmon64 -s</code> prints the schema of an installed binary if you need to check which fields it knows.</p>
 </section>
 
 <section id="search" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Search syntax</h2>
-  <p>The start page searches the selected modules (or all) as you type. Plain words are AND-ed and matched case-insensitively against module path, RuleGroup name, event, rule name, fields, operators and values. Each hit is the matching <code>&lt;Rule&gt;</code> or bare condition; a module whose only match is its name is shown once in full.</p>
+  <p>The start page searches the selected modules (or all – the toggle next to the box) as you type; module type and category are part of the query (<code>kind:</code>, <code>cat:</code>) rather than separate controls. Plain words are AND-ed and matched case-insensitively against module path, RuleGroup name, event, rule name, fields, operators and values. Each hit is the matching <code>&lt;Rule&gt;</code> or bare condition; a module whose only match is its name is shown once in full.</p>
   <div class="table-responsive"><table class="table table-sm kc-table">
     <thead><tr><th>Syntax</th><th>Meaning</th><th>Example</th></tr></thead>
     <tbody>

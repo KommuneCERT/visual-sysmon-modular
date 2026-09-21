@@ -239,6 +239,13 @@ document.addEventListener("alpine:init", () => {
     },
 
     // ── export / import of the whole state ──
+    importMode: "replace",
+    async importFromInput(ev) {
+      const f = ev.target.files[0]; if (!f) return;
+      try { const n = await this.importAll(f, this.importMode); this.notify(`Imported ${n.profiles} profiles and ${n.overlay} overlay modules`); this.go("#/profile"); }
+      catch (e) { this.notify(`Import failed: ${e.message}`); }
+      ev.target.value = "";
+    },
     exportAll() { download(`vsm-export-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(S.exportState(A.raw(this.state), vsm.upstream), null, 2), "application/json"); },
     async importAll(file, mode) {
       const data = JSON.parse(await file.text());
@@ -272,7 +279,7 @@ document.addEventListener("alpine:init", () => {
       try {
         const modules = this.modulesFor(p.modules);
         const r = await engine.merge({ modules, template: vsm.catalog.template, sysmonVersion: p.sysmon_version, unsupported: p.unsupported,
-          preserveComments: p.preserve_comments, forceGroupRelationOr: p.force_grouprelation_or, analyze: p.analyze });
+          preserveComments: true, forceGroupRelationOr: false, analyze: true });
         const findings = r.findings || [];
         let id = nowStamp();
         while (this.build(id)) id += "-x";
@@ -332,9 +339,9 @@ document.addEventListener("alpine:init", () => {
   // ── page components ──
   A.data("pageSearch", () => ({
     q: "", kind: "", category: "", scope: "selected", result: null,
-    init() { this.q = this.$store.app.route.query.q || ""; this.run(); this.$watch("q", () => this.run()); this.$watch("kind", () => this.run()); this.$watch("category", () => this.run()); this.$watch("scope", () => this.run()); },
+    init() { this.q = this.$store.app.route.query.q || ""; this.run(); this.$watch("q", () => this.run()); this.$watch("scope", () => this.run()); },
     run() {
-      if (!this.q.trim() && !this.kind && !this.category) { this.result = null; return; }
+      if (!this.q.trim()) { this.result = null; return; }
       this.result = search(vsm.catalog, A.raw(this.$store.app.profile), { q: this.q, kind: this.kind, category: this.category, scope: this.scope });
     },
     newModule(i) { return i === 0 || this.result.hits[i].rel !== this.result.hits[i - 1].rel; },
@@ -352,12 +359,21 @@ document.addEventListener("alpine:init", () => {
   }));
 
   A.data("pageProfile", () => ({
-    form: {}, newName: "", newMode: "preset:balanced", copyFrom: "", importMode: "replace", stateImportMode: "replace",
-    init() { const p = this.$store.app.profile; this.form = { name: p.name, description: p.description, sysmon_version: p.sysmon_version, unsupported: p.unsupported, analyze: p.analyze, preserve_comments: p.preserve_comments, force_grouprelation_or: p.force_grouprelation_or }; },
-    save() { Object.assign(this.$store.app.profile, this.form, { name: this.form.name.trim() || this.$store.app.profile.name }); this.$store.app.persist(); this.$store.app.notify("Settings saved"); },
+    form: {}, newName: "", newMode: "preset:balanced", copyFrom: "", importMode: "replace",
+    init() { const p = this.$store.app.profile; this.form = { name: p.name, description: p.description, sysmon_version: p.sysmon_version, strip_unsupported: p.unsupported === "exclude" }; },
+    save() {
+      const p = this.$store.app.profile;
+      Object.assign(p, { name: this.form.name.trim() || p.name, description: this.form.description, sysmon_version: this.form.sysmon_version, unsupported: this.form.strip_unsupported ? "exclude" : "warn" });
+      this.$store.app.persist(); this.$store.app.notify("Settings saved");
+    },
+    get summary() {
+      const st = this.$store.app, b = this.builds[0];
+      const edited = st.overlayRels.filter(r => st.profile.modules.includes(r)).length;
+      const last = b ? ` · last build ${b.ok ? "OK" : "FAILED"} ${b.id.replace("T", " ").slice(5)}` : " · not built yet";
+      return `${st.selected.size} of ${st.moduleTotal} modules selected${edited ? ` · ${edited} edited/custom` : ""}${last}` + (st.profile.description ? ` · ${st.profile.description}` : "");
+    },
     create() { try { const slug = this.$store.app.createProfile(this.newName, this.newMode, this.copyFrom); this.newName = ""; this.$store.app.notify(`Profile '${slug}' created`); this.init(); } catch (e) { this.$store.app.notify(e.message); } },
     async importFile(ev) { const f = ev.target.files[0]; if (!f) return; const n = this.$store.app.importList(await f.text(), this.importMode); this.$store.app.notify(`${n} modules processed`); ev.target.value = ""; },
-    async importState(ev) { const f = ev.target.files[0]; if (!f) return; try { const n = await this.$store.app.importAll(f, this.stateImportMode); this.$store.app.notify(`Imported ${n.profiles} profiles and ${n.overlay} overlay modules`); this.init(); } catch (e) { this.$store.app.notify(`Import failed: ${e.message}`); } ev.target.value = ""; },
     get builds() { return this.$store.app.buildsFor(this.$store.app.state.current).slice(0, 10); },
   }));
 
@@ -417,6 +433,11 @@ document.addEventListener("alpine:init", () => {
       try {
         const model = JSON.parse(JSON.stringify(A.raw(this.model)));
         for (const rg of model.rulegroups) for (const ev of rg.events) if (!this.eventTypes.includes(ev.event_type)) throw new Error(`unknown event type ${ev.event_type}`);
+        // schemaversion is the module file's own declaration; raise it to what the events used require
+        // (the merged output always gets the profile's target schema regardless)
+        const need = model.rulegroups.flatMap(rg => rg.events.map(ev => this.schema.events[ev.event_type]?.min_schema || "4.00"));
+        model.schemaversion = [model.schemaversion || "4.90", ...need].sort((a, b) => cmpVer(a, b)).pop();
+        this.model.schemaversion = model.schemaversion;
         const xml = toXml(model);
         const r = await this.$store.app.validateXml(this.m.rel, xml);
         this.findings = r.findings || [];
@@ -479,7 +500,6 @@ document.addEventListener("alpine:init", () => {
       const d = await engine.diff({ before, after });
       this.diffHtml = d.ok ? renderDiff(d.diff, this.diffBefore, this.b.id) : `<div class="kc-callout kc-callout--danger"><span class="kc-callout-icon">✖</span><div><p class="kc-callout-body mb-0">${esc(d.error)}</p></div></div>`;
     },
-    log() { const b = this.b; if (!b) return ""; return [`merge: ${b.module_count} modules → ${b.group_count} RuleGroups, target Sysmon ${b.sysmon_version} (schema ${b.schemaversion}), upstream ${b.upstream}`, ...(b.error ? [`error: ${b.error}`] : []), ...b.warnings.map(w => `warning: ${w}`), ...b.findings.map(f => `[${f.code}] ${f.severity}${f.line ? ` line ${f.line}` : ""}: ${f.message}${f.detail ? ` – ${f.detail}` : ""}`)].join("\n"); },
   }));
 
   A.data("pageCoverage", () => ({
@@ -558,6 +578,12 @@ document.addEventListener("alpine:init", () => {
     current(matrix) { return this.sel ? matrix.byId[this.sel] : null; },
   }));
 });
+
+function cmpVer(a, b) {
+  const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
+  return 0;
+}
 
 // ── routing ──────────────────────────────────────────────────────────────────
 export function parseRoute(hash = location.hash) {

@@ -42,7 +42,7 @@ export function checklist(catalog, profile, lastBuild) {
   const fd = rels.filter(r => r.startsWith("23_file_delete/"));
   if (fd.some(r => kindOf(r) === "include")) out.push(item("warn", "FileDelete archiving (event 23) is on – watch disk usage", `Every deleted file that matches the ${fd.filter(r => kindOf(r) === "include").length} selected include module(s) is copied into C:\\Sysmon on each host and never rotated. Busy file, database or build servers can fill a disk. Either keep the includes narrow, add exclusions, plan a cleanup job for the archive directory – or use event 26 (FileDeleteDetected), which logs deletions without keeping the file.`, "#/c/23_file_delete"));
 
-  if (Number(profile.sysmon_version) < 15 && profile.unsupported !== "exclude") out.push(item("warn", `Target Sysmon ${profile.sysmon_version} with unsupported items kept`, "Events or fields newer than the target are only warned about, so the file may fail to load on the older binary. Set 'unsupported' to remove them, or target the version you actually run.", "#/profile"));
+  if (Number(profile.sysmon_version) < 15 && profile.unsupported !== "exclude") out.push(item("warn", `Target Sysmon ${profile.sysmon_version} with unsupported items kept`, "Events or fields newer than the target are only warned about, so the file may fail to load on the older binary. Enable 'Remove events and fields the target version does not support' in the build settings, or target the version you actually run.", "#/profile"));
 
   const custom = rels.filter(r => catalog.sourceOf(r) === "custom");
   if (custom.length) {

@@ -28,7 +28,9 @@ export function slugify(name) {
 
 export function newProfile(slug, name, opts = {}) {
   return {
-    slug, name, description: "", sysmon_version: DEFAULT_SYSMON_VERSION, unsupported: "warn", preserve_comments: false,
+    // analyze / preserve_comments / force_grouprelation_or are kept for export compatibility but no longer user-editable:
+    // the build always analyses, always preserves comments (upstream's release setting) and never forces "or".
+    slug, name, description: "", sysmon_version: DEFAULT_SYSMON_VERSION, unsupported: "exclude", preserve_comments: true,
     force_grouprelation_or: false, analyze: true, modules: [], created: now(), updated: now(), ...opts,
   };
 }

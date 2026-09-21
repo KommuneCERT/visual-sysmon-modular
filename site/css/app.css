@@ -211,3 +211,9 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 .vsm-pick-item code { color: var(--kc-blue); margin-right: 4px; }
 .vsm-pick-item:hover, .vsm-pick-item.active { background: var(--kc-gray-100); }
 kbd { font-family: var(--kc-font-mono); font-size: 11px; background: var(--kc-gray-100); border: 1px solid var(--kc-gray-200); border-radius: 3px; padding: 0 5px; color: var(--kc-navy); }
+
+/* clean-up */
+.vsm-details > summary { cursor: pointer; list-style: none; }
+.vsm-details > summary::-webkit-details-marker { display: none; }
+.vsm-details > summary::before { content: "▸ "; color: var(--kc-gray-400); }
+.vsm-details[open] > summary::before { content: "▾ "; }
