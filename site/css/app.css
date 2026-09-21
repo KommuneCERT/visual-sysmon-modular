@@ -187,6 +187,8 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 .vsm-hit .vsm-sentence { margin: 0 0 4px; }
 .vsm-vol-tag { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #fff; background: var(--kc-red); border-radius: 3px; padding: 1px 5px; flex-shrink: 0; cursor: help; }
 .vsm-catlist .active .vsm-vol-tag { background: #fff; color: var(--kc-red); }
+.vsm-vol-tag--disk { background: var(--kc-amber); }
+.vsm-catlist .active .vsm-vol-tag--disk { background: #fff; color: var(--kc-amber); }
 .vsm-checklist .kc-callout--compact { margin-bottom: 6px; }
 .vsm-checklist .kc-callout-body { margin: 2px 0 0; }
 .vsm-env { display: flex; flex-direction: column; align-items: flex-start; width: 100%; height: 100%; text-align: left; padding: 14px 16px; border: 2px solid var(--kc-gray-200); border-radius: var(--kc-radius-lg); background: #fff; transition: border-color .15s, box-shadow .15s; }

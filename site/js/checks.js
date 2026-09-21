@@ -10,7 +10,7 @@ export const VOLUME = {
   "3_network_connection_initiated": { level: "medium", why: "One event per outbound connection. Manageable with exclusions; watch servers with many clients." },
   "22_dns_query": { level: "medium", why: "One event per DNS lookup. Cached lookups are not repeated, but browsers still generate many." },
   "1_process_creation": { level: "medium", why: "The most valuable event. Volume is usually fine; scripts and build tools that spawn many processes are the exception." },
-  "23_file_delete": { level: "medium", why: "Deleted files are also copied into C:\\Sysmon (ArchiveDirectory). Disk usage grows on busy hosts – prefer event 26 unless you need the file contents." },
+  "23_file_delete": { level: "medium", disk: true, why: "Every matching deleted file is COPIED into the Sysmon archive directory (C:\\Sysmon by default, protected by a system ACL) before it is removed. Disk usage grows until you clean it up – there is no automatic rotation. Prefer event 26 (FileDeleteDetected) unless you need the file contents." },
   "26_file_delete_detected": { level: "medium", why: "Logs deletions without archiving the file. Cheaper than event 23, still frequent in temp folders." },
 };
 export const volumeOf = cat => VOLUME[cat] || { level: "low", why: "Low-volume event type on typical hosts." };
@@ -39,7 +39,8 @@ export function checklist(catalog, profile, lastBuild) {
     if (!catIncl.length && catExcl.length) out.push(item("warn", `${cat}: exclude-only – everything is logged`, `Without an include filter this high-volume event type is collected in full except the excluded noise. ${v.why}`, `#/c/${cat}`));
     else if (catIncl.length && availExcl.length && !catExcl.length) out.push(item("warn", `${cat}: no noise exclusions selected`, `High-volume event type with all ${availExcl.length} exclusion modules off. ${v.why}`, `#/c/${cat}`));
   }
-  if (rels.some(r => r.startsWith("23_file_delete/"))) out.push(item("info", "FileDelete archiving (event 23) is on", "Deleted files are copied to the Sysmon archive directory on each host. Make sure disk growth is acceptable, or use event 26 (FileDeleteDetected) instead.", "#/c/23_file_delete"));
+  const fd = rels.filter(r => r.startsWith("23_file_delete/"));
+  if (fd.some(r => kindOf(r) === "include")) out.push(item("warn", "FileDelete archiving (event 23) is on – watch disk usage", `Every deleted file that matches the ${fd.filter(r => kindOf(r) === "include").length} selected include module(s) is copied into C:\\Sysmon on each host and never rotated. Busy file, database or build servers can fill a disk. Either keep the includes narrow, add exclusions, plan a cleanup job for the archive directory – or use event 26 (FileDeleteDetected), which logs deletions without keeping the file.`, "#/c/23_file_delete"));
 
   if (Number(profile.sysmon_version) < 15 && profile.unsupported !== "exclude") out.push(item("warn", `Target Sysmon ${profile.sysmon_version} with unsupported items kept`, "Events or fields newer than the target are only warned about, so the file may fail to load on the older binary. Set 'unsupported' to remove them, or target the version you actually run.", "#/profile"));
 

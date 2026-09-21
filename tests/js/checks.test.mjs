@@ -24,7 +24,9 @@ test("high-volume category without exclusions, filedelete, version, build state"
   const p = { modules: all.filter(r => !(r.startsWith("7_image_load/") && r.includes("/exclude_"))), sysmon_version: "13", unsupported: "warn", updated: "2026-09-20T10:00:00Z" };
   const t = titles(checklist(catalog, p, null));
   assert.ok(t.includes("7_image_load: no noise exclusions selected"));
-  assert.ok(t.includes("FileDelete archiving (event 23) is on"));
+  const fdItem = checklist(catalog, p, null).find(i => i.title.startsWith("FileDelete archiving (event 23) is on"));
+  assert.ok(fdItem && fdItem.level === "warn" && /C:\\Sysmon/.test(fdItem.detail));
+  assert.ok(volumeOf("23_file_delete").disk);
   assert.ok(t.includes("Target Sysmon 13 with unsupported items kept"));
   assert.ok(t.includes("Not built yet"));
   const built = checklist(catalog, p, { id: "b", ok: true, created: "2026-09-20T09:00:00Z", summary: { error: 0, warning: 2 }, findings: [{ code: "ANL006" }, { code: "ANL006" }] });
