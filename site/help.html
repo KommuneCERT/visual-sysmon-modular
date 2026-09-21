@@ -31,7 +31,7 @@
   <h2 class="kc-section-title">Workflow</h2>
   <p>This site wraps <a href="https://github.com/olafhartong/sysmon-modular" target="_blank" rel="noopener">sysmon-modular</a>: a library of small XML <em>modules</em>, one per detection idea or noise exclusion, organised by Sysmon event ID. The same Go code that powers upstream's CLI, compiled to WebAssembly, does the merging, validation and analysis <strong>inside your browser</strong>. Nothing you select or edit is sent anywhere.</p>
   <ol class="vsm-steps">
-    <li><strong>Search</strong> for what you want to change: a process name, an ATT&amp;CK ID, a field, a category (<code>cat:22</code>), a module type (<code>kind:exclude</code>). Every hit is the matching <code>&lt;Rule&gt;</code> in context.</li>
+    <li><strong>Search</strong> for what you want to change: a process name, an ATT&amp;CK ID, a field, an event type (<code>event:22</code>), a module type (<code>kind:exclude</code>). Every hit is the matching <code>&lt;Rule&gt;</code> in context.</li>
     <li><strong>Switch modules on or off</strong> with the toggle on each hit (or <em>Switch on/off all hits</em>). You start from upstream's standard configuration.</li>
     <li><strong>Edit a rule</strong> with <em>Edit</em> (form) or <em>XML</em> (raw). Both validate with upstream's validator before saving; upstream files are never changed – your version is stored as an overlay.</li>
     <li><strong>Create your own modules</strong> for environment-specific exclusions (menu ☰ → <em>New custom module</em>, or from a category search).</li>
@@ -43,7 +43,7 @@
 <section id="standard" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">The standard configuration</h2>
   <p>You start from sysmon-modular's published <code>sysmonconfig.xml</code> ("Balanced"): every detection and noise-exclusion module except FileDelete archiving (event 23). It is the recommended starting point for workstations and servers. Everything you change – modules switched on or off, edited rules, custom modules – is stored in this browser and applied on top of that standard when you press <strong>Download</strong>.</p>
-  <p>Builds follow upstream's release settings: comments are preserved, the analyzer always runs, and events or fields newer than the Sysmon target chosen in the menu are removed so the file loads cleanly. Other upstream variants are one search away: <a href="#/?q=kind:exclude">only the exclusions</a> (research), or switch FileDelete on via <a href="#/?q=cat:23">cat:23</a>. Hosts with Microsoft Defender for Endpoint: upstream's <code>mde_covered_modules.txt</code> lists what MDE already collects – import it as an <em>exclude list</em> from the menu if you want the "MDE augment" variant.</p>
+  <p>Builds follow upstream's release settings: comments are preserved, the analyzer always runs, and events or fields newer than the Sysmon target chosen in the menu are removed so the file loads cleanly. Other upstream variants are one search away: <a href="#/?q=kind:exclude">only the exclusions</a> (research), or switch FileDelete on via <a href="#/?q=event:23">event:23</a>. Hosts with Microsoft Defender for Endpoint: upstream's <code>mde_covered_modules.txt</code> lists what MDE already collects – import it as an <em>exclude list</em> from the menu if you want the "MDE augment" variant.</p>
   <p><strong>Reset to standard configuration</strong> (menu ☰) restores the standard selection and discards your edited and custom modules – export first if you want to keep them.</p>
   <p>Server roles (domain controllers, SQL, Exchange/IIS, RDS…) do not need separate configurations: Sysmon records the same event types on every Windows host and the detection modules apply everywhere. What differs per role is the <em>noise</em>, so add your own <em>exclude</em> modules for the software on those hosts. Role-specific security telemetry (Kerberos, mailbox access, HTTP requests) comes from the Windows Security log and application logs, not from Sysmon.</p>
 </section>
@@ -172,22 +172,22 @@
 
 <section id="search" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Search syntax</h2>
-  <p>The start page searches the selected modules (or all – the toggle next to the box) as you type; module type and category are part of the query (<code>kind:</code>, <code>cat:</code>) rather than separate controls. Plain words are AND-ed and matched case-insensitively against module path, RuleGroup name, event, rule name, fields, operators and values. Each hit is the matching <code>&lt;Rule&gt;</code> or bare condition; a module whose only match is its name is shown once in full.</p>
+  <p>The start page searches the selected modules (or all – the toggle next to the box) as you type; module type and event type are part of the query (<code>kind:</code>, <code>event:</code>) rather than separate controls. Plain words are AND-ed and matched case-insensitively against module path, RuleGroup name, event, rule name, fields, operators and values. Each hit is the matching <code>&lt;Rule&gt;</code> or bare condition; a module whose only match is its name is shown once in full.</p>
   <div class="table-responsive"><table class="table table-sm kc-table">
     <thead><tr><th>Syntax</th><th>Meaning</th><th>Example</th></tr></thead>
     <tbody>
       <tr><td><code>word</code></td><td>substring anywhere in the block or its context</td><td><code>lsass</code></td></tr>
       <tr><td><code>"a phrase"</code></td><td>substring with spaces</td><td><code>"Clear Windows Event Logs"</code></td></tr>
-      <tr><td><code>-word</code></td><td>must not appear</td><td><code>cat:22 -google</code></td></tr>
+      <tr><td><code>-word</code></td><td>must not appear</td><td><code>event:22 -google</code></td></tr>
       <tr><td><code>/regex/</code></td><td>JavaScript regular expression (case-insensitive); <code>-/regex/</code> negates</td><td><code>/powershell|pwsh/</code></td></tr>
       <tr><td><code>kind:include</code> · <code>kind:exclude</code></td><td>module type</td><td><code>kind:exclude adobe</code></td></tr>
-      <tr><td><code>cat:</code></td><td>category by event id or name part</td><td><code>cat:10</code>, <code>cat:dns</code></td></tr>
-      <tr><td><code>event:</code> · <code>onmatch:</code></td><td>Sysmon event element / include-exclude of the block</td><td><code>event:ProcessAccess onmatch:exclude</code></td></tr>
+      <tr><td><code>event:</code></td><td>event type by ID (exact), name part or Sysmon element name (<code>cat:</code> is an alias)</td><td><code>event:10</code>, <code>event:dns</code>, <code>event:ProcessAccess</code></td></tr>
+      <tr><td><code>onmatch:</code></td><td>include or exclude block</td><td><code>event:ProcessAccess onmatch:exclude</code></td></tr>
       <tr><td><code>field:</code> · <code>op:</code> · <code>value:</code></td><td>the block has a condition on this field / with this operator / whose value contains</td><td><code>field:CommandLine op:"contains any" value:-enc</code></td></tr>
       <tr><td><code>tech:</code></td><td>ATT&amp;CK id prefix on the rule or its group</td><td><code>tech:T1059</code>, <code>tech:T1003.001</code></td></tr>
     </tbody>
   </table></div>
-  <p>Below the counters, <em>Switch on all hits</em> / <em>Switch off</em> apply the search to your configuration in one go – e.g. <code>kind:exclude cat:22</code> to switch every DNS exclusion on, or <code>value:sophos</code> to find and remove all Sophos-related modules.</p>
+  <p>Below the counters, <em>Switch on all hits</em> / <em>Switch off</em> apply the search to your configuration in one go – e.g. <code>kind:exclude event:22</code> to switch every DNS exclusion on, or <code>value:sophos</code> to find and remove all Sophos-related modules.</p>
 </section>
 
 <section id="shortcuts" class="kc-surface rounded-3 p-4 mb-4">

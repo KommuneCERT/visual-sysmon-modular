@@ -45,7 +45,7 @@ await page.fill("#q", "lsass_noise"); await page.waitForTimeout(500);
 step("module-level hit", (await page.locator(".vsm-hit-ctx").first().innerText()).includes("whole module"));
 
 await page.click("label[for='scope-all']");
-await page.fill("#q", "kind:exclude cat:22 -google"); await page.waitForTimeout(500);
+await page.fill("#q", "kind:exclude event:22 -google"); await page.waitForTimeout(500);
 const modulesHit = parseInt((await page.locator(".kc-tag:has-text(' modules'):not(:has-text('hits'))").innerText()), 10);
 const before = await store(() => Alpine.store("app").selected.size);
 await page.click("button:has-text('Switch off')"); await page.waitForTimeout(300);
@@ -110,7 +110,7 @@ step("coverage from menu", (await page.locator(".vsm-tactic").count()) >= 10);
 await page.click(".vsm-burger"); await page.click(".vsm-menu-list a:has-text('Help')"); await page.waitForSelector("#help-root section");
 step("help event table", (await page.locator("#event-table tbody tr").count()) >= 20 && (await page.locator("#cost-table tbody tr").count()) >= 20);
 await page.click("#event-table a:has-text('search') >> nth=0"); await page.waitForTimeout(600);
-step("event table → search cat:", (await store(() => location.hash)).includes("q=cat%3A1") || (await store(() => location.hash)).includes("q=cat:1"));
+step("event table → search cat:", (await store(() => location.hash)).includes("q=event%3A1") || (await store(() => location.hash)).includes("q=event:1"));
 await page.goto(base + "/#/help"); await page.waitForSelector("#help-root section");
 await page.click(".vsm-toc a:has-text('Condition operators')");
 const scrolled = await page.waitForFunction(() => location.hash === "#/help/conditions" && Math.abs(document.getElementById("conditions").getBoundingClientRect().top) < 120, null, { timeout: 5000 }).then(() => true).catch(() => false);

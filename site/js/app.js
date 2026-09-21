@@ -284,13 +284,13 @@ document.addEventListener("alpine:init", () => {
     fillHelpTables(root) {
       const cost = root.querySelector("#cost-table tbody");
       const lvl = v => `<span class="vsm-cost-dim vsm-cost-${v || "low"}">${v || "low"}</span>`;
-      if (cost) cost.innerHTML = vsm.catalog.categories().map(c => { const k = costOf(c.dirname); return `<tr><td><a href="#/?q=cat:${c.event_ids[0]}">${c.event_ids.join("/")} ${esc(c.label)}</a></td><td>${lvl(k.volume)}</td><td>${lvl(k.cpu)}</td><td>${lvl(k.disk)}${k.privacy === "high" ? ' <span class="vsm-cost-dim vsm-cost-high">privacy</span>' : ""}</td><td class="small">${esc(k.why)}</td></tr>`; }).join("");
+      if (cost) cost.innerHTML = vsm.catalog.categories().map(c => { const k = costOf(c.dirname); return `<tr><td><a href="#/?q=event:${c.event_ids[0]}">${c.event_ids.join("/")} ${esc(c.label)}</a></td><td>${lvl(k.volume)}</td><td>${lvl(k.cpu)}</td><td>${lvl(k.disk)}${k.privacy === "high" ? ' <span class="vsm-cost-dim vsm-cost-high">privacy</span>' : ""}</td><td class="small">${esc(k.why)}</td></tr>`; }).join("");
       const ev = root.querySelector("#event-table tbody");
       const sel = this.selected;
       if (ev) ev.innerHTML = vsm.catalog.categories().map(c => {
         const on = c.modules.filter(m => sel.has(m.rel)).length, inc = c.modules.filter(m => m.kind === "include").length;
         const tags = costTags(c.dirname).map(t => `<span class="${t.cls}">${t.label}</span>`).join(" ");
-        return `<tr><td><span class="vsm-evid">${c.event_ids.join("/")}</span></td><td>${esc(c.label)} ${tags}</td><td>${on} / ${c.modules.length}</td><td class="small">${inc} include · ${c.modules.length - inc} exclude</td><td><a href="#/?q=cat:${c.event_ids[0]}">search</a> · <a href="#/new?cat=${c.dirname}">new module</a></td></tr>`;
+        return `<tr><td><span class="vsm-evid">${c.event_ids.join("/")}</span></td><td>${esc(c.label)} ${tags}</td><td>${on} / ${c.modules.length}</td><td class="small">${inc} include · ${c.modules.length - inc} exclude</td><td><a href="#/?q=event:${c.event_ids[0]}">search</a> · <a href="#/new?cat=${c.dirname}">new module</a></td></tr>`;
       }).join("");
     },
   });

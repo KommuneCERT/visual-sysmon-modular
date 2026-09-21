@@ -65,11 +65,11 @@
           </a>
           <div class="vsm-search-row">
             <input id="q" class="form-control form-control-lg vsm-search-input" type="search" autofocus autocomplete="off" x-model.debounce.150ms="q"
-                   placeholder="Search the configuration – e.g. lsass, T1003, powershell -enc, cat:22 -google …">
+                   placeholder="Search the configuration – e.g. lsass, T1003, powershell -enc, event:22 -google …">
           </div>
           <div class="vsm-search-tips">
-            <span>Tip: <code>-word</code> · <code>/regex/</code> · <code>"phrase"</code> · <code>kind:</code> · <code>cat:</code> · <code>field:</code> · <code>tech:</code> · <a href="#/help/search">Syntax</a></span>
-            <span class="vsm-search-examples">Try <a href="#" @click.prevent="q='lsass'">lsass</a> · <a href="#" @click.prevent="q='tech:T1059'">tech:T1059</a> · <a href="#" @click.prevent="q='kind:exclude cat:22'">kind:exclude cat:22</a> · <a href="#" @click.prevent="q='field:CommandLine -enc'">field:CommandLine -enc</a></span>
+            <span>Tip: <code>-word</code> · <code>/regex/</code> · <code>"phrase"</code> · <code>kind:</code> · <code>event:</code> · <code>field:</code> · <code>tech:</code> · <a href="#/help/search">Syntax</a></span>
+            <span class="vsm-search-examples">Try <a href="#" @click.prevent="q='lsass'">lsass</a> · <a href="#" @click.prevent="q='tech:T1059'">tech:T1059</a> · <a href="#" @click.prevent="q='kind:exclude event:22'">kind:exclude event:22</a> · <a href="#" @click.prevent="q='field:CommandLine -enc'">field:CommandLine -enc</a></span>
           </div>
           <p class="vsm-hero-note" x-show="!q.trim()">You are looking at sysmon-modular's standard configuration – <span x-text="$store.app.selected.size"></span> of its <span x-text="$store.app.moduleTotal"></span> modules; the rest (FileDelete archiving) is off by design. Search for what you want to change, switch modules on or off, edit rules – then <a href="#" @click.prevent="$store.app.download()">download your sysmonconfig.xml</a>. Everything runs in your browser.</p>
         </div>
@@ -148,7 +148,7 @@
           <div>
             <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
               <div>
-                <span class="kc-section-tag"><a :href="'#/?q=cat:' + m.category.split('_')[0]" x-text="m.category"></a> · rule editor</span>
+                <span class="kc-section-tag"><a :href="'#/?q=event:' + m.category.split('_')[0]" x-text="m.category"></a> · rule editor</span>
                 <h1 class="kc-section-title mb-0"><code x-text="m.filename"></code> <span class="kc-tag align-middle" :class="{ 'kc-tag-green': m.source === 'edited', 'kc-tag-navy': m.source === 'custom' }" x-text="m.source" x-pop="'<strong>' + m.source + '</strong> – ' + (m.source === 'upstream' ? 'unchanged upstream module; saving stores your copy in the overlay and upstream is never touched.' : m.source === 'edited' ? 'your overlay copy shadows the upstream module in every build.' : 'your own module; exists only in the overlay.') + ' The rule editor drops XML comments – use the raw XML editor to keep them.'"></span></h1>
               </div>
               <div class="d-flex gap-2 align-items-center">
@@ -254,7 +254,7 @@
           <div>
             <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
               <div>
-                <span class="kc-section-tag"><a :href="'#/?q=cat:' + m.category.split('_')[0]" x-text="m.category"></a> · raw XML</span>
+                <span class="kc-section-tag"><a :href="'#/?q=event:' + m.category.split('_')[0]" x-text="m.category"></a> · raw XML</span>
                 <h1 class="kc-section-title mb-0"><code x-text="m.filename"></code></h1>
                 <div class="small text-muted">Source: <span x-text="m.source"></span><span x-show="m.source === 'upstream'"> – saved as an overlay copy on first change</span></div>
               </div>

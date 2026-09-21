@@ -38,6 +38,17 @@ test("negation and regex", () => {
   assert.ok(search(catalog, all, { q: "/[/" }).total >= 0); // invalid regex degrades to text
 });
 
+test("event id matching is exact", () => {
+  const r1 = search(catalog, all, { q: "event:1" });
+  assert.ok(r1.total > 0 && r1.module_rels.every(r => r.startsWith("1_process_creation/")));
+  const r12 = search(catalog, all, { q: "cat:12" });
+  assert.ok(r12.total > 0 && r12.module_rels.every(r => r.startsWith("12_13_14_")));
+  const rdns = search(catalog, all, { q: "event:dns" });
+  assert.ok(rdns.total > 0 && rdns.module_rels.every(r => r.startsWith("22_dns_query/")));
+  const rel = search(catalog, all, { q: "event:DnsQuery onmatch:exclude" });
+  assert.ok(rel.total > 0 && rel.hits.every(h => h.event_type === "DnsQuery"));
+});
+
 test("module list for bulk actions", () => {
   const r = search(catalog, all, { q: "kind:exclude cat:22" });
   assert.equal(r.module_rels.length, r.modules_hit);

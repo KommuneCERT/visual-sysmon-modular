@@ -5,8 +5,9 @@
 //   "some phrase"   phrase with spaces
 //   -word           must NOT appear
 //   /regex/         JavaScript regular expression (also -/regex/)
-//   kind:include|exclude      module type              cat:22 | cat:dns_query   category (id or name part)
-//   event:ProcessCreate       Sysmon event element     onmatch:include|exclude
+//   kind:include|exclude      module type
+//   event:1 | event:dns | event:ProcessCreate   event ID, name part or Sysmon element (cat: is an alias)
+//   onmatch:include|exclude
 //   field:CommandLine         a condition on this field   op:"contains any"     condition operator
 //   tech:T1059 | tech:T1059.001  ATT&CK id (prefix)    value:powershell        substring of a value only
 import { ruleToXml, conditionToXml, ruleTechnique } from "./model.js";
@@ -42,9 +43,12 @@ function contentHit(terms, ctxHay, content) {
 }
 function moduleHit(terms, hay) { return terms.every(t => (t.neg ? !hit(t, hay) : hit(t, hay))); }
 
+// event:1 / cat:1 → exactly event ID 1 (never 10, 11, 12…); event:dns → name part; event:ProcessCreate → element name (handled per block)
 function catMatches(cat, want) {
-  const [ids, ...rest] = cat.split("_");
-  return cat.includes(want) || ids.split("_").includes(want) || cat.replace(/^\d+(?:_\d+)*_/, "").includes(want) || cat.startsWith(want + "_") || cat.startsWith(want);
+  const m = /^(\d+(?:_\d+)*)_(.*)$/.exec(cat);
+  if (!m) return cat.includes(want);
+  if (/^\d+$/.test(want)) return m[1].split("_").includes(want);
+  return m[2].includes(want.replace(/[\s-]+/g, "_")) || cat === want;
 }
 function condFilters(f, conds) {
   if (f.field && !conds.some(c => c.field.toLowerCase() === f.field)) return false;
@@ -61,6 +65,12 @@ export function search(catalog, profile, { q = "", kind = "", category = "", sco
   let rels = scope === "selected" ? [...selected].sort() : catalog.allRels();
   if (category) rels = rels.filter(r => r.split("/")[0] === category);
   if (f.cat) rels = rels.filter(r => catMatches(r.split("/")[0], f.cat));
+  // event: accepts an event ID or name part (narrows modules) as well as a Sysmon element name (narrows blocks)
+  let elementFilter = "";
+  if (f.event) {
+    const byDir = rels.filter(r => catMatches(r.split("/")[0], f.event));
+    if (byDir.length) rels = byDir; else elementFilter = f.event;
+  }
   if (f.kind === "include" || f.kind === "exclude") rels = rels.filter(r => kindOf(r) === f.kind);
 
   const hits = [];
@@ -74,7 +84,7 @@ export function search(catalog, profile, { q = "", kind = "", category = "", sco
     for (const rg of mod.rulegroups) {
       const groupTech = ruleTechnique(rg.name);
       for (const ev of rg.events) {
-        if (f.event && ev.event_type.toLowerCase() !== f.event) continue;
+        if (elementFilter && ev.event_type.toLowerCase() !== elementFilter) continue;
         if (f.onmatch && ev.onmatch !== f.onmatch) continue;
         const ctxHay = [rel, rg.name, ev.event_type, ev.onmatch].join(" ").toLowerCase();
         const common = { group_name: rg.name, group_relation: rg.group_relation, event_type: ev.event_type, onmatch: ev.onmatch };
