@@ -22,7 +22,7 @@ const store = fn => page.evaluate(fn);
 // ── landing ──
 await page.goto(base + "/#/", { waitUntil: "networkidle" });
 await page.waitForSelector("#q", { timeout: 15000 });
-step("landing shows only the search box", (await page.locator(".vsm-search--hero").count()) === 1 && (await page.locator(".vsm-hit").count()) === 0 && (await page.locator(".vsm-top").isVisible()) === false);
+step("landing shows only the search box", (await page.locator(".vsm-search--hero").count()) === 1 && (await page.locator(".vsm-hit").count()) === 0 && (await page.locator(".vsm-top").isVisible()) && (await page.locator(".vsm-top-back").isVisible()) === false);
 step("standard configuration = Balanced", (await store(() => Alpine.store("app").profile.modules.length)) === 433);
 step("footer bar", (await page.locator(".vsm-footer").innerText()).includes("Download sysmonconfig.xml") && (await page.locator(".vsm-footer-status").innerText()) === "Standard configuration · 433 modules");
 await shot("landing");

@@ -144,7 +144,7 @@ document.addEventListener("alpine:init", () => {
     get overlayRels() { this.tick; return vsm.catalog.overlayRels(); },
     get hasQuery() { return !!(this.route.query.q || "").trim() || !!this.lastQuery.trim(); },
     get searchHref() { return this.lastQuery ? `#/?q=${encodeURIComponent(this.lastQuery)}` : "#/"; },
-    get pageTitle() { return ({ editor: "Rule editor", raw: "Raw XML", newModule: "New module", coverage: "ATT&CK coverage", help: "Help" })[this.route.page] || ""; },
+    get pageTitle() { return ({ search: "Search", editor: "Rule editor", raw: "Raw XML", newModule: "New module", coverage: "ATT&CK coverage", help: "Help" })[this.route.page] || ""; },
     // "of 441" would suggest a deviation – the standard itself uses 433 of upstream's 441 modules (no FileDelete archiving)
     get statusLine() { this.tick; const n = this.changeCount; return n ? `${this.selected.size} modules · ${n} change${n === 1 ? "" : "s"} from standard` : `Standard configuration · ${this.selected.size} modules`; },
     get dlChecklist() { return this.dl ? checklist(vsm.catalog, A.raw(this.profile), this.dl.meta) : []; },

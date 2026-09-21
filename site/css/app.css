@@ -13,7 +13,7 @@ body { min-height: 100vh; padding-bottom: 64px; }   /* room for the fixed footer
 .vsm-top-title { margin-left: auto; color: rgba(255,255,255,.55); font-size: 12px; letter-spacing: .5px; text-transform: uppercase; }
 
 .vsm-main { max-width: var(--kc-content-max); margin: 0 auto; padding: var(--kc-space-5) var(--kc-space-6); }
-.vsm-app--landing .vsm-main { min-height: calc(100vh - 64px); display: flex; flex-direction: column; justify-content: center; }
+.vsm-app--landing .vsm-main { min-height: calc(100vh - 64px - 40px); display: flex; flex-direction: column; justify-content: center; }
 
 /* landing / search */
 .vsm-hero { max-width: 880px; margin: 0 auto; width: 100%; }
@@ -21,7 +21,6 @@ body { min-height: 100vh; padding-bottom: 64px; }   /* room for the fixed footer
 .vsm-hero-logo { display: flex; align-items: center; justify-content: center; gap: 12px; text-decoration: none; margin-bottom: 22px; }
 .vsm-hero-name { display: block; font-size: 26px; font-weight: 700; color: var(--kc-navy); letter-spacing: .2px; }
 .vsm-hero-sub { display: block; font-size: 11px; color: var(--kc-gray-400); letter-spacing: 1.4px; text-transform: uppercase; }
-.vsm-search:not(.vsm-search--hero) .vsm-hero-logo { justify-content: flex-start; margin-bottom: 10px; transform: scale(.7); transform-origin: left center; }
 .vsm-search-row { position: relative; }
 .vsm-search-input { font-size: 18px; padding: 12px 18px; border-radius: 28px; box-shadow: var(--kc-shadow-md); border: 1px solid var(--kc-gray-200); }
 .vsm-search-input:focus { box-shadow: 0 0 0 4px rgba(10,157,217,.2); border-color: var(--kc-cyan); }
