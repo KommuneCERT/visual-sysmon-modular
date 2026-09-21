@@ -46,7 +46,7 @@
             <span>Tip: <code>-word</code> · <code>/regex/</code> · <code>"phrase"</code> · <code>kind:</code> · <code>cat:</code> · <code>field:</code> · <code>tech:</code> · <a href="#/help/search">Syntax</a></span>
             <span class="vsm-search-examples">Try <a href="#" @click.prevent="q='lsass'">lsass</a> · <a href="#" @click.prevent="q='tech:T1059'">tech:T1059</a> · <a href="#" @click.prevent="q='kind:exclude cat:22'">kind:exclude cat:22</a> · <a href="#" @click.prevent="q='field:CommandLine -enc'">field:CommandLine -enc</a></span>
           </div>
-          <p class="vsm-hero-note" x-show="!q.trim()">You are looking at sysmon-modular's standard configuration (<span x-text="$store.app.selected.size"></span> modules). Search for what you want to change, switch modules on or off, edit rules – then <a href="#" @click.prevent="$store.app.download()">download your sysmonconfig.xml</a>. Everything runs in your browser.</p>
+          <p class="vsm-hero-note" x-show="!q.trim()">You are looking at sysmon-modular's standard configuration – <span x-text="$store.app.selected.size"></span> of its <span x-text="$store.app.moduleTotal"></span> modules; the rest (FileDelete archiving) is off by design. Search for what you want to change, switch modules on or off, edit rules – then <a href="#" @click.prevent="$store.app.download()">download your sysmonconfig.xml</a>. Everything runs in your browser.</p>
         </div>
 
         <template x-if="result !== null">

@@ -24,7 +24,7 @@ await page.goto(base + "/#/", { waitUntil: "networkidle" });
 await page.waitForSelector("#q", { timeout: 15000 });
 step("landing shows only the search box", (await page.locator(".vsm-search--hero").count()) === 1 && (await page.locator(".vsm-hit").count()) === 0 && (await page.locator(".vsm-top").isVisible()) === false);
 step("standard configuration = Balanced", (await store(() => Alpine.store("app").profile.modules.length)) === 433);
-step("footer bar", (await page.locator(".vsm-footer").innerText()).includes("Download sysmonconfig.xml") && (await page.locator(".vsm-footer-status").innerText()) === "433 of 441 modules · standard configuration");
+step("footer bar", (await page.locator(".vsm-footer").innerText()).includes("Download sysmonconfig.xml") && (await page.locator(".vsm-footer-status").innerText()) === "Standard configuration · 433 modules");
 await shot("landing");
 
 // ── search + toggles ──
@@ -33,9 +33,9 @@ step("hits with sentences", (await page.locator(".vsm-hit").count()) > 5 && (awa
 step("hero collapses", (await page.locator(".vsm-search--hero").count()) === 0);
 const firstSwitch = page.locator(".vsm-hit-module .vsm-switch").first();
 await firstSwitch.uncheck(); await page.waitForTimeout(300);
-step("toggle off → 'off' tag + footer count", (await page.locator(".vsm-hit-module").first().innerText()).includes("off") && (await page.locator(".vsm-footer-status").innerText()).startsWith("432 of 441 modules · 1 change"));
+step("toggle off → 'off' tag + footer count", (await page.locator(".vsm-hit-module").first().innerText()).includes("off") && (await page.locator(".vsm-footer-status").innerText()) === "432 modules · 1 change from standard");
 await page.locator(".vsm-hit-module .vsm-switch").first().check(); await page.waitForTimeout(300);
-step("toggle on again", (await page.locator(".vsm-footer-status").innerText()).startsWith("433 of 441"));
+step("toggle on again", (await page.locator(".vsm-footer-status").innerText()).startsWith("Standard configuration"));
 await shot("results");
 
 await page.fill("#q", "lsass_noise"); await page.waitForTimeout(500);
