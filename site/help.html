@@ -15,6 +15,8 @@
     <a href="#/help/conditions">Condition operators</a>
     <a href="#/help/modular">How sysmon-modular merges</a>
     <a href="#/help/versions">Sysmon versions &amp; schema</a>
+    <a href="#/help/search">Search syntax</a>
+    <a href="#/help/shortcuts">Keyboard shortcuts</a>
     <a href="#/help/deploy">Deploying</a>
     <a href="#/help/tips">Practical tips</a>
     <a href="#/help/data">Where the data lives</a>
@@ -144,6 +146,44 @@
     </tbody>
   </table></div>
   <p>A module's own <code>schemaversion</code> only matters for the module file itself; the merged file uses the profile's target. <code>sysmon64 -s</code> prints the schema of an installed binary if you need to check which fields it knows.</p>
+</section>
+
+<section id="search" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">Search syntax</h2>
+  <p>The start page searches the selected modules (or all) as you type. Plain words are AND-ed and matched case-insensitively against module path, RuleGroup name, event, rule name, fields, operators and values. Each hit is the matching <code>&lt;Rule&gt;</code> or bare condition; a module whose only match is its name is shown once in full.</p>
+  <div class="table-responsive"><table class="table table-sm kc-table">
+    <thead><tr><th>Syntax</th><th>Meaning</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><code>word</code></td><td>substring anywhere in the block or its context</td><td><code>lsass</code></td></tr>
+      <tr><td><code>"a phrase"</code></td><td>substring with spaces</td><td><code>"Clear Windows Event Logs"</code></td></tr>
+      <tr><td><code>-word</code></td><td>must not appear</td><td><code>cat:22 -google</code></td></tr>
+      <tr><td><code>/regex/</code></td><td>JavaScript regular expression (case-insensitive); <code>-/regex/</code> negates</td><td><code>/powershell|pwsh/</code></td></tr>
+      <tr><td><code>kind:include</code> · <code>kind:exclude</code></td><td>module type</td><td><code>kind:exclude adobe</code></td></tr>
+      <tr><td><code>cat:</code></td><td>category by event id or name part</td><td><code>cat:10</code>, <code>cat:dns</code></td></tr>
+      <tr><td><code>event:</code> · <code>onmatch:</code></td><td>Sysmon event element / include-exclude of the block</td><td><code>event:ProcessAccess onmatch:exclude</code></td></tr>
+      <tr><td><code>field:</code> · <code>op:</code> · <code>value:</code></td><td>the block has a condition on this field / with this operator / whose value contains</td><td><code>field:CommandLine op:"contains any" value:-enc</code></td></tr>
+      <tr><td><code>tech:</code></td><td>ATT&amp;CK id prefix on the rule or its group</td><td><code>tech:T1059</code>, <code>tech:T1003.001</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Below the counters, <em>Select all hit modules</em> / <em>Deselect</em> apply the search to the profile in one go – e.g. <code>kind:exclude cat:22</code> to switch every DNS exclusion on, or <code>value:sophos</code> to find and remove all Sophos-related modules.</p>
+</section>
+
+<section id="shortcuts" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">Keyboard shortcuts</h2>
+  <p>Active when no input field has focus.</p>
+  <div class="table-responsive"><table class="table table-sm kc-table">
+    <tbody>
+      <tr><td><kbd>/</kbd></td><td>Search (focuses the search box)</td></tr>
+      <tr><td><kbd>b</kbd></td><td>Build the current profile</td></tr>
+      <tr><td><kbd>p</kbd></td><td>Profile page</td></tr>
+      <tr><td><kbd>l</kbd></td><td>Build list</td></tr>
+      <tr><td><kbd>c</kbd></td><td>ATT&amp;CK coverage</td></tr>
+      <tr><td><kbd>h</kbd> / <kbd>?</kbd></td><td>Help / this list</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Leave an input field (then the shortcuts work again)</td></tr>
+      <tr><td><kbd>Tab</kbd> in the raw XML editor</td><td>Inserts two spaces</td></tr>
+      <tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> in a rule name</td><td>Pick an ATT&amp;CK technique from the suggestions</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 <section id="deploy" class="kc-surface rounded-3 p-4 mb-4">

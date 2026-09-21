@@ -42,6 +42,25 @@ step("search hits with sentences", (await page.locator(".vsm-hit").count()) > 5 
 await page.fill("#q", "lsass_noise"); await page.waitForTimeout(500);
 step("module-level hit", (await page.locator(".vsm-hit-ctx").first().innerText()).includes("whole module"));
 
+// ── search syntax + bulk actions ──
+await page.selectOption("select[title='Which modules to search']", "all");
+await page.fill("#q", "kind:exclude cat:22 -google"); await page.waitForTimeout(500);
+const hitMods = await page.evaluate(() => [...new Set([...document.querySelectorAll(".vsm-hit-path code")].map(e => e.textContent))]);
+step("query syntax filters", hitMods.length > 3 && hitMods.every(r => r.startsWith("22_dns_query/exclude_") && !/google/.test(r)), `${hitMods.length} modules`);
+const modulesHit = parseInt((await page.locator(".kc-tag:has-text(' modules'):not(:has-text('hits'))").innerText()), 10);
+const beforeBulk = await page.evaluate(() => Alpine.store("app").selected.size);
+await page.click("button:has-text('Deselect')"); await page.waitForTimeout(300);
+const afterBulk = await page.evaluate(() => Alpine.store("app").selected.size);
+step("bulk deselect from search", afterBulk === beforeBulk - modulesHit, `${beforeBulk} → ${afterBulk} (${modulesHit} modules hit)`);
+await page.click("button:has-text('Select all hit modules')"); await page.waitForTimeout(300);
+step("bulk select restores", (await page.evaluate(() => Alpine.store("app").selected.size)) === beforeBulk);
+
+// ── keyboard shortcuts ──
+await page.keyboard.press("Escape"); await page.keyboard.press("p"); await page.waitForTimeout(200);
+step("shortcut p → profile", (await page.evaluate(() => location.hash)) === "#/profile");
+await page.keyboard.press("/"); await page.waitForTimeout(400);
+step("shortcut / → search focused", (await page.evaluate(() => location.hash)) === "#/" && (await page.evaluate(() => document.activeElement?.id)) === "q");
+
 // ── category: toggles, volume badge, sentences ──
 await page.goto(base + "/#/c/7_image_load"); await page.waitForTimeout(400);
 step("high volume badge + popover", (await page.locator(".kc-tag-red:has-text('high volume')").count()) === 1);
@@ -58,6 +77,12 @@ await page.goto(base + "/#/m/1_process_creation/include_clear_windows_event_logs
 step("editor renders fields", (await page.locator(".vsm-cond select").first().inputValue()) === "OriginalFileName");
 await page.fill(".vsm-cond input.font-monospace >> nth=0", "changed.exe"); await page.waitForTimeout(100);
 step("explain updates live", (await page.locator(".vsm-rule .vsm-sentence").first().innerText()).includes("changed.exe"));
+step("ATT&CK status on existing rule", (await page.locator(".vsm-rule .vsm-pick-status").first().innerText()).includes("ATT&CK"));
+const nameInput = page.locator(".vsm-rule .vsm-pick input").first();
+await nameInput.fill("T1003.00"); await page.waitForTimeout(200);
+step("technique suggestions", (await page.locator(".vsm-pick-list:visible .vsm-pick-item").count()) >= 5);
+await nameInput.press("ArrowDown"); await nameInput.press("Enter"); await page.waitForTimeout(100);
+step("technique picked", /^technique_id=T1003\.00\d,technique_name=/.test(await nameInput.inputValue()) && (await page.locator(".vsm-rule .vsm-pick-status").first().innerText()).includes("✓"), await nameInput.inputValue());
 await page.click("button:text-is('Save') >> nth=0");
 await page.waitForFunction(() => document.body.innerText.includes("Saved to overlay"), null, { timeout: 60000 });
 step("editor save validated by engine", true);

@@ -90,7 +90,7 @@
               <select class="form-select form-select-sm w-auto" x-model="kind" title="Module type"><option value="">include + exclude</option><option value="include">include only</option><option value="exclude">exclude only</option></select>
               <select class="form-select form-select-sm w-auto" x-model="category" title="Category"><option value="">all categories</option><template x-for="row in $store.app.sidebar" :key="row.cat.dirname"><option :value="row.cat.dirname" x-text="row.cat.event_ids.join('/') + ' · ' + row.cat.label"></option></template></select>
               <select class="form-select form-select-sm w-auto" x-model="scope" title="Which modules to search"><option value="selected" x-text="`selected modules (${$store.app.selected.size})`"></option><option value="all" x-text="`all modules (${$store.app.moduleTotal})`"></option></select>
-              <span class="text-muted small ms-auto">Words are AND-ed and matched case-insensitively against module path, RuleGroup name, event, rule name, fields, operators and values. <button x-help="'Each hit is one <code>&lt;Rule&gt;</code> or one bare condition, shown as it appears in the module, with its context (module → RuleGroup → event). Click the module to open the editor. A search with only a filter (e.g. <em>exclude only</em> + a category) lists every block in scope.'"></button></span>
+              <span class="text-muted small ms-auto">Words are AND-ed; <code>-word</code> excludes, <code>/regex/</code>, <code>"phrase"</code>, and filters <code>kind:</code> <code>cat:</code> <code>event:</code> <code>onmatch:</code> <code>field:</code> <code>op:</code> <code>tech:</code> <code>value:</code>. <a href="#/help/search">Syntax</a> <button x-help="'Each hit is one <code>&lt;Rule&gt;</code> or one bare condition, shown as it appears in the module, with its context (module → RuleGroup → event). Examples: <code>field:CommandLine -enc</code>, <code>tech:T1003 kind:include</code>, <code>cat:22 -google</code>, <code>event:ProcessAccess op:&quot;contains any&quot;</code>. Press <kbd>/</kbd> anywhere to jump here.'"></button></span>
             </div>
           </div>
         </div>
@@ -107,6 +107,7 @@
               <span class="kc-tag kc-tag-blue" x-text="result.total + ' hits'"></span>
               <span class="kc-tag" x-text="result.modules_hit + ' of ' + result.modules_scanned + ' modules'"></span>
               <span class="kc-tag kc-tag-amber" x-show="result.truncated" x-text="'showing first ' + result.hits.length + ' – refine the search'"></span>
+              <span class="ms-auto btn-group btn-group-sm" x-show="result.module_rels.length"><button class="btn btn-outline-primary" @click="bulk(true)" :title="'Switch on every module with a hit (' + result.module_rels.length + ')'">Select all hit modules</button><button class="btn btn-outline-danger" @click="bulk(false)" title="Switch off every module with a hit">Deselect</button></span>
             </div>
             <p class="text-muted px-1" x-show="!result.hits.length">No matches.</p>
             <template x-for="(hit, i) in result.hits" :key="i + hit.rel + hit.xml">
@@ -360,7 +361,11 @@
               <section class="kc-surface rounded-3 mb-4 vsm-group">
                 <header class="vsm-group-head d-flex gap-2 align-items-center flex-wrap">
                   <span class="kc-tag kc-tag-navy">RuleGroup <button x-help="'Top-level container. <code>or</code> (default): the group matches if any rule or condition inside matches. <code>and</code>: all bare conditions must match. The name is informational; sysmon-modular puts the ATT&amp;CK tag here when the whole group covers one technique.'"></button></span>
-                  <input class="form-control form-control-sm flex-grow-1" placeholder="Name (e.g. technique_id=T1059,technique_name=Command and Scripting Interpreter)" x-model="rg.name" @input="dirty=true">
+                  <div class="vsm-pick flex-grow-1" x-data="techPicker({ get: () => rg.name, set: v => { rg.name = v; dirty = true } })" @click.outside="open = false">
+                    <input class="form-control form-control-sm" placeholder="Name – type an ATT&amp;CK ID or name for suggestions (e.g. T1059 or powershell)" x-model="rg.name" @input="dirty=true; query($event.target.value)" @keydown="key($event)" @focus="query($event.target.value)">
+                    <span class="kc-tag vsm-pick-status" x-show="status(rg.name)" :class="status(rg.name)?.cls" :title="status(rg.name)?.title" x-text="status(rg.name)?.text"></span>
+                    <div class="vsm-pick-list" x-show="open" x-cloak><template x-for="(t, i) in items" :key="t.id"><button type="button" class="vsm-pick-item" :class="{ active: i === sel }" @mousedown.prevent="choose(t)"><code x-text="t.id"></code> <span x-text="t.full || t.name"></span><span class="text-muted small ms-1" x-text="t.tactics.join(', ')"></span></button></template></div>
+                  </div>
                   <select class="form-select form-select-sm w-auto" x-model="rg.group_relation" @change="dirty=true"><option value="or">or</option><option value="and">and</option></select>
                   <button class="btn btn-sm btn-outline-primary" @click="addEvent(rg)">+ Event</button>
                   <button class="btn btn-sm btn-outline-danger" @click="if (confirm('Remove the entire RuleGroup?')) { model.rulegroups.splice(gi, 1); dirty = true }">✕</button>
@@ -396,7 +401,11 @@
                       <div class="vsm-rule">
                         <div class="d-flex gap-2 align-items-center flex-wrap mb-1">
                           <span class="kc-tag">Rule <template x-if="ri === 0"><button x-help="'Groups conditions into one match. <code>and</code>: every condition must be true (e.g. Image <em>and</em> CommandLine). <code>or</code>: any one. The name is written to the event\'s <code>RuleName</code> field – keep the <code>technique_id=…,technique_name=…</code> format so coverage reports work.'"></button></template></span>
-                          <input class="form-control form-control-sm flex-grow-1" x-model="r.name" @input="dirty=true" placeholder="technique_id=T1234,technique_name=…">
+                          <div class="vsm-pick flex-grow-1" x-data="techPicker({ get: () => r.name, set: v => { r.name = v; dirty = true } })" @click.outside="open = false">
+                            <input class="form-control form-control-sm" x-model="r.name" @input="dirty=true; query($event.target.value)" @keydown="key($event)" @focus="query($event.target.value)" placeholder="technique_id=T1234,technique_name=… – type an ID or name for suggestions">
+                            <span class="kc-tag vsm-pick-status" x-show="status(r.name)" :class="status(r.name)?.cls" :title="status(r.name)?.title" x-text="status(r.name)?.text"></span>
+                            <div class="vsm-pick-list" x-show="open" x-cloak><template x-for="(t, i) in items" :key="t.id"><button type="button" class="vsm-pick-item" :class="{ active: i === sel }" @mousedown.prevent="choose(t)"><code x-text="t.id"></code> <span x-text="t.full || t.name"></span><span class="text-muted small ms-1" x-text="t.tactics.join(', ')"></span></button></template></div>
+                          </div>
                           <select class="form-select form-select-sm w-auto" x-model="r.group_relation" @change="dirty=true"><option value="and">and</option><option value="or">or</option></select>
                           <button class="btn btn-sm btn-outline-secondary" @click="r.conditions.push(newCond(ev)); dirty=true">+ condition</button>
                           <button class="btn btn-sm btn-outline-secondary" @click="ev.rules.splice(ri + 1, 0, JSON.parse(JSON.stringify(r))); dirty=true" title="Duplicate rule">⧉</button>

@@ -14,12 +14,14 @@ const SEVERITY_ORDER = ["error", "warning", "performance", "recommendation", "in
 const SEV_LABEL = { error: "Errors", warning: "Warnings", performance: "Performance", recommendation: "Recommendations", info: "Info" };
 
 // Non-reactive globals (large / immutable). The reactive store only holds user state.
-export const vsm = { catalog: null, fields: null, upstream: null, examples: {} };
+export const vsm = { catalog: null, fields: null, upstream: null, attack: null, examples: {} };
 
 // ── boot: fetch data before Alpine starts ────────────────────────────────────
 async function boot() {
-  const [catalogData, fields, upstream] = await Promise.all(
-    ["data/catalog.json", "data/fields.json", "data/upstream.json"].map(u => fetch(u).then(r => { if (!r.ok) throw new Error(`${u}: ${r.status}`); return r.json(); })));
+  const [catalogData, fields, upstream, attack] = await Promise.all(
+    ["data/catalog.json", "data/fields.json", "data/upstream.json", "data/attack.json"].map(u => fetch(u).then(r => { if (!r.ok) throw new Error(`${u}: ${r.status}`); return r.json(); })));
+  vsm.attack = attack;
+  vsm.attackById = Object.fromEntries(attack.techniques.map(t => [t.id, t]));
   const state = S.loadState();
   vsm.catalog = new Catalog(catalogData, state.overlay);
   vsm.fields = fields;
@@ -304,6 +306,22 @@ document.addEventListener("alpine:init", () => {
     },
   });
 
+  // ── keyboard shortcuts (ignored while typing) ──
+  const SHORTCUTS = { "/": "#/", "b": "build", "p": "#/profile", "c": "#/coverage", "h": "#/help", "?": "#/help/shortcuts", "l": "#/builds" };
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) { if (e.key === "Escape") t.blur(); return; }
+    if (document.querySelector(".modal.show")) return;
+    const action = SHORTCUTS[e.key];
+    if (!action) return;
+    e.preventDefault();
+    const st = A.store("app");
+    if (action === "build") st.runBuild();
+    else if (action === "#/" && location.hash.replace(/\?.*$/, "") === "#/") document.getElementById("q")?.focus();
+    else { st.go(action); if (action === "#/") setTimeout(() => document.getElementById("q")?.focus(), 150); }
+  });
+
   onEngineStatus(s => { const st = A.store("app"); st.engine.state = s.state; st.engine.error = s.error; });
   window.addEventListener("hashchange", () => {
     const route = parseRoute();
@@ -323,6 +341,14 @@ document.addEventListener("alpine:init", () => {
     newCtx(i) { if (this.newModule(i)) return true; const a = this.result.hits[i], b = this.result.hits[i - 1]; return a.group_name !== b.group_name || a.event_type !== b.event_type || a.onmatch !== b.onmatch; },
     get mark() { return this.result ? this.result.terms.join(" ") : ""; },
     sentence(hit) { return describeHit(hit); },
+    bulk(on) {
+      if (!this.result) return;
+      const s = this.$store.app.selected;
+      for (const rel of this.result.module_rels) on ? s.add(rel) : s.delete(rel);
+      this.$store.app.setModules([...s]);
+      this.$store.app.notify(`${this.result.module_rels.length} modules ${on ? "selected" : "deselected"}`);
+      this.run();
+    },
   }));
 
   A.data("pageProfile", () => ({
@@ -485,6 +511,44 @@ document.addEventListener("alpine:init", () => {
       } catch (e) { this.$store.app.notify(e.message); }
     },
     open() { new window.bootstrap.Modal(document.getElementById("wizard")).show(); },
+  }));
+
+  // Autocomplete for technique_id=…,technique_name=… on Rule / RuleGroup name inputs.
+  A.data("techPicker", ({ get, set }) => ({
+    open: false, sel: 0, items: [],
+    getValue: get, setValue: set,
+    query(v) {
+      const q = (v || "").replace(/^technique_id=/i, "").replace(/,technique_name=.*$/i, "").trim().toLowerCase();
+      if (q.length < 2) { this.items = []; this.open = false; return; }
+      const all = vsm.attack.techniques;
+      const starts = [], contains = [];
+      for (const t of all) {
+        if (t.revoked || t.deprecated) continue;
+        const idl = t.id.toLowerCase(), name = (t.full || t.name).toLowerCase();
+        if (idl.startsWith(q)) starts.push(t); else if (name.includes(q) || idl.includes(q)) contains.push(t);
+        if (starts.length + contains.length > 60) break;
+      }
+      this.items = [...starts, ...contains].slice(0, 8); this.sel = 0; this.open = this.items.length > 0;
+    },
+    tag(t) { return `technique_id=${t.id},technique_name=${t.name}`; },
+    choose(t) { this.setValue(this.tag(t)); this.open = false; },
+    key(e) {
+      if (!this.open) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); this.sel = (this.sel + 1) % this.items.length; }
+      else if (e.key === "ArrowUp") { e.preventDefault(); this.sel = (this.sel - 1 + this.items.length) % this.items.length; }
+      else if (e.key === "Enter") { e.preventDefault(); this.choose(this.items[this.sel]); }
+      else if (e.key === "Escape") { this.open = false; }
+    },
+    status(v) {   // ✓ known & name matches · ✗ unknown · ~ name differs · ⚠ revoked
+      const m = /technique_id=([^,]+),technique_name=(.*)$/.exec(v || "");
+      if (!m) return v && /technique/i.test(v) ? { cls: "kc-tag-red", text: "malformed tag", title: "Expected technique_id=T####[.###],technique_name=…" } : null;
+      const t = vsm.attackById[m[1].trim()];
+      if (!t) return { cls: "kc-tag-red", text: "unknown ID", title: `${m[1]} is not in the ATT&CK table` };
+      if (t.revoked || t.deprecated) return { cls: "kc-tag-amber", text: t.revoked ? "revoked" : "deprecated", title: t.replacement ? `Replaced by ${t.replacement}` : "No replacement" };
+      const want = m[2].trim().toLowerCase();
+      const ok = [t.name, t.full, t.full?.replace(": ", " - ")].filter(Boolean).some(n => n.toLowerCase() === want);
+      return ok ? { cls: "kc-tag-green", text: "ATT&CK ✓", title: (t.full || t.name) + " · " + t.tactics.join(", ") } : { cls: "kc-tag-amber", text: "name differs", title: `ATT&CK name: ${t.name}` };
+    },
   }));
 
   A.data("attackMatrix", () => ({

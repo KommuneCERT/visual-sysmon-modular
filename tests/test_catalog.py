@@ -44,7 +44,17 @@ def test_fields_and_upstream():
     assert u["url"].startswith("https://github.com/")
 
 
+def test_attack_table():
+    a = build_catalog.build_attack(UPSTREAM)
+    assert a["count"] > 800 and len(a["bundle_sha256"]) == 64
+    by = {t["id"]: t for t in a["techniques"]}
+    assert by["T1003"]["name"] == "OS Credential Dumping" and by["T1003"]["tactics"] == ["credential-access"]
+    assert by["T1003.001"]["full"] == "OS Credential Dumping: LSASS Memory"
+    assert by["T1002"].get("revoked") and by["T1002"]["replacement"] == "T1560"
+    assert sum(1 for t in a["techniques"] if t.get("revoked")) > 100
+
+
 def test_cli_writes_files(tmp_path):
     subprocess.run([sys.executable, str(ROOT / "tools" / "build_catalog.py"), "--upstream", str(UPSTREAM), "--out", str(tmp_path)], check=True)
-    for name in ("catalog.json", "fields.json", "upstream.json"):
+    for name in ("catalog.json", "fields.json", "upstream.json", "attack.json"):
         json.loads((tmp_path / name).read_text())

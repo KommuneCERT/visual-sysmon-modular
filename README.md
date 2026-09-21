@@ -25,7 +25,8 @@ ATT&CK coverage, semantic diff) is compiled to WebAssembly, so the result is exa
 - **Categories** – the same directories as upstream; toggle include (detection) and exclude (noise)
   modules, or select all/includes/excludes per category.
 - **Rule editor** – RuleGroup → event → Rule → conditions with field/operator dropdowns from the
-  Sysmon schema. Saving validates with upstream's validator.
+  Sysmon schema and ATT&CK technique autocomplete (upstream's embedded table) with a live tag check.
+  Saving validates with upstream's validator.
 - **Raw XML** editor with highlighting, validation and "save anyway".
 - **Overlay** – upstream modules are never changed; your edits and custom modules shadow them.
   *Reset to upstream* removes your copy.
@@ -35,7 +36,8 @@ ATT&CK coverage, semantic diff) is compiled to WebAssembly, so the result is exa
   rule stats, Navigator layer export.
 - **Import/export** of upstream-style include/exclude lists, and **Save / Load** of everything
   (profiles + overlay) as one JSON file.
-- **Help** page explaining the workflow and how Sysmon include/exclude filtering works.
+- **Help** page explaining the workflow, search syntax, keyboard shortcuts (`/` `b` `p` `c` `h` `?`) and how
+  Sysmon include/exclude filtering works.
 
 ## Where your data lives
 
@@ -49,7 +51,7 @@ across upstream updates.
 ```
 vendor/sysmon-modular/      upstream, pinned git submodule
 wasm/main.go                syscall/js wrapper around upstream's internal packages
-tools/build_catalog.py      → site/data/{catalog,fields,upstream}.json   (stdlib Python)
+tools/build_catalog.py      → site/data/{catalog,fields,upstream,attack}.json   (stdlib Python)
 tools/build.sh              runs the generator and compiles the WASM engine into site/
 site/                       the static site: index.html + ES modules + Alpine.js + Bootstrap
   js/engine-worker.js       Web Worker hosting the Go/WASM engine (loaded on first use, ~4 MB)

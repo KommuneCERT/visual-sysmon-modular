@@ -6,6 +6,7 @@ Standard library only – runs in GitHub Actions and locally.
   catalog.json   categories + every module's raw XML + template + example lists
   upstream.json  pinned upstream commit / date / url
   fields.json    Sysmon event fields + condition operators (from upstream's Go source)
+  attack.json    ATT&CK technique table embedded in upstream's tooling (for autocomplete)
 """
 from __future__ import annotations
 
@@ -117,6 +118,37 @@ def build_fields(upstream: Path) -> dict:
     }
 
 
+TECH_RE = re.compile(r'"(T\d{4}(?:\.\d{3})?)":\s*\{Name:\s*"((?:[^"\\]|\\.)*)",\s*Tactics:\s*\[\]string\{([^}]*)\}(.*?)\},?$', re.M)
+
+
+def build_attack(upstream: Path) -> dict:
+    """The Enterprise ATT&CK table upstream embeds (internal/mitre/techniques_gen.go)."""
+    src = (upstream / "tooling" / "internal" / "mitre" / "techniques_gen.go").read_text(encoding="utf-8")
+    header = {}
+    for key, pat in (("bundle_sha256", r"Bundle SHA-256:\s*([0-9a-f]+)"), ("modified", r"modified timestamp:\s*(\S+)")):
+        m = re.search(pat, src)
+        header[key] = m.group(1) if m else ""
+    techniques = []
+    for m in TECH_RE.finditer(src):
+        tid, name, tactics, rest = m.groups()
+        name = name.encode().decode("unicode_escape") if "\\" in name else name
+        entry = {"id": tid, "name": name, "tactics": re.findall(r'"([^"]+)"', tactics)}
+        if "Revoked: true" in rest:
+            entry["revoked"] = True
+        if "Deprecated: true" in rest:
+            entry["deprecated"] = True
+        rm = re.search(r'Replacement:\s*"([^"]+)"', rest)
+        if rm:
+            entry["replacement"] = rm.group(1)
+        techniques.append(entry)
+    by_id = {t["id"]: t for t in techniques}
+    for t in techniques:   # "Parent: Sub" display name for sub-techniques
+        if "." in t["id"]:
+            parent = by_id.get(t["id"].split(".")[0])
+            t["full"] = f"{parent['name']}: {t['name']}" if parent else t["name"]
+    return {**header, "count": len(techniques), "techniques": techniques}
+
+
 def build_upstream(upstream: Path) -> dict:
     def git(*args: str) -> str:
         try:
@@ -144,7 +176,9 @@ def main() -> None:
     (a.out / "catalog.json").write_text(json.dumps(catalog, ensure_ascii=False, separators=(",", ":")))
     (a.out / "fields.json").write_text(json.dumps(build_fields(a.upstream), indent=1))
     (a.out / "upstream.json").write_text(json.dumps(build_upstream(a.upstream), indent=1))
-    print(f"catalog: {len(catalog['categories'])} categories, {len(catalog['modules'])} modules → {a.out}")
+    attack = build_attack(a.upstream)
+    (a.out / "attack.json").write_text(json.dumps(attack, ensure_ascii=False, separators=(",", ":")))
+    print(f"catalog: {len(catalog['categories'])} categories, {len(catalog['modules'])} modules, {attack['count']} ATT&CK techniques → {a.out}")
 
 
 if __name__ == "__main__":

@@ -199,3 +199,13 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 .vsm-deploy li { margin-bottom: 12px; font-size: 14px; }
 .vsm-cmd { display: flex; gap: 8px; align-items: center; margin: 6px 0; background: var(--kc-navy); border-radius: var(--kc-radius-md); padding: 6px 10px; }
 .vsm-cmd code { color: #8fe3b4; flex: 1; font-size: 12.5px; white-space: nowrap; overflow-x: auto; }
+
+/* technique autocomplete */
+.vsm-pick { position: relative; }
+.vsm-pick-status { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); pointer-events: auto; }
+.vsm-pick input { padding-right: 96px; }
+.vsm-pick-list { position: absolute; z-index: 1050; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid var(--kc-gray-200); border-radius: var(--kc-radius-md); box-shadow: var(--kc-shadow-md); max-height: 280px; overflow: auto; margin-top: 2px; }
+.vsm-pick-item { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 6px 10px; font-size: 12.5px; }
+.vsm-pick-item code { color: var(--kc-blue); margin-right: 4px; }
+.vsm-pick-item:hover, .vsm-pick-item.active { background: var(--kc-gray-100); }
+kbd { font-family: var(--kc-font-mono); font-size: 11px; background: var(--kc-gray-100); border: 1px solid var(--kc-gray-200); border-radius: 3px; padding: 0 5px; color: var(--kc-navy); }
