@@ -190,3 +190,12 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 .vsm-pick-item code { color: var(--kc-blue); margin-right: 4px; }
 .vsm-pick-item:hover, .vsm-pick-item.active { background: var(--kc-gray-100); }
 kbd { font-family: var(--kc-font-mono); font-size: 11px; background: var(--kc-gray-100); border: 1px solid var(--kc-gray-200); border-radius: 3px; padding: 0 5px; color: var(--kc-navy); }
+
+/* help: three parts */
+.vsm-toc-part { margin-top: 10px; font-weight: 700; }
+.vsm-toc-part:first-of-type { margin-top: 0; }
+.vsm-toc-part a { color: var(--kc-navy) !important; }
+.vsm-toc-sub { padding-left: 12px !important; }
+.vsm-help-part { margin: 8px 0 14px; padding: 14px 18px; border-left: 4px solid var(--kc-cyan); background: var(--kc-white); border-radius: 0 var(--kc-radius-lg) var(--kc-radius-lg) 0; box-shadow: var(--kc-shadow-sm); scroll-margin-top: 80px; }
+.vsm-help-part-title { font-size: 22px; font-weight: 700; color: var(--kc-navy); margin: 2px 0 4px; }
+.vsm-help-part-blurb { margin: 0; color: var(--kc-gray-600); font-size: 14px; }

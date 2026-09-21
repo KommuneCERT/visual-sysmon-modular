@@ -1,31 +1,39 @@
 
 <span class="kc-section-tag">Help</span>
-<h1 class="kc-section-title">How this tool and Sysmon configurations work</h1>
+<h1 class="kc-section-title">Three things to know: this tool, sysmon-modular, and Sysmon itself</h1>
 
 <div class="row g-4">
 <aside class="col-lg-3">
   <nav class="kc-surface rounded-3 p-3 vsm-toc">
-    <div class="small fw-bold text-uppercase mb-2">Contents</div>
-    <a href="#/help/workflow">Workflow</a>
-    <a href="#/help/standard">The standard configuration</a>
-    <a href="#/help/events">Event types</a>
-    <a href="#/help/concepts">Configuration, overlay, download</a>
-    <a href="#/help/sysmon">Sysmon configuration basics</a>
-    <a href="#/help/onmatch">include vs. exclude</a>
-    <a href="#/help/matching">How rules match</a>
-    <a href="#/help/conditions">Condition operators</a>
-    <a href="#/help/modular">How sysmon-modular merges</a>
-    <a href="#/help/versions">Sysmon versions &amp; schema</a>
-    <a href="#/help/cost">What each event type costs</a>
-    <a href="#/help/search">Search syntax</a>
-    <a href="#/help/shortcuts">Keyboard shortcuts</a>
-    <a href="#/help/deploy">Deploying</a>
-    <a href="#/help/tips">Practical tips</a>
-    <a href="#/help/data">Where the data lives</a>
+    <div class="vsm-toc-part"><a href="#/help/part-tool">Visual Sysmon Modular</a></div>
+    <a href="#/help/workflow" class="vsm-toc-sub">Workflow</a>
+    <a href="#/help/concepts" class="vsm-toc-sub">Configuration, overlay, download</a>
+    <a href="#/help/search" class="vsm-toc-sub">Search syntax</a>
+    <a href="#/help/shortcuts" class="vsm-toc-sub">Keyboard shortcuts</a>
+    <a href="#/help/tips" class="vsm-toc-sub">Practical tips</a>
+    <a href="#/help/data" class="vsm-toc-sub">Where the data lives</a>
+    <div class="vsm-toc-part"><a href="#/help/part-modular">sysmon-modular</a></div>
+    <a href="#/help/standard" class="vsm-toc-sub">The standard configuration</a>
+    <a href="#/help/events" class="vsm-toc-sub">Event types</a>
+    <a href="#/help/modular" class="vsm-toc-sub">How sysmon-modular merges</a>
+    <div class="vsm-toc-part"><a href="#/help/part-sysmon">Sysmon</a></div>
+    <a href="#/help/sysmon" class="vsm-toc-sub">Configuration basics</a>
+    <a href="#/help/onmatch" class="vsm-toc-sub">include vs. exclude</a>
+    <a href="#/help/matching" class="vsm-toc-sub">How rules match</a>
+    <a href="#/help/conditions" class="vsm-toc-sub">Condition operators</a>
+    <a href="#/help/versions" class="vsm-toc-sub">Versions &amp; schema</a>
+    <a href="#/help/cost" class="vsm-toc-sub">What each event type costs</a>
+    <a href="#/help/deploy" class="vsm-toc-sub">Deploying</a>
   </nav>
 </aside>
 
 <div class="col-lg-9 vsm-prose">
+
+<div id="part-tool" class="vsm-help-part">
+  <div class="kc-section-tag">Part</div>
+  <h2 class="vsm-help-part-title">Visual Sysmon Modular</h2>
+  <p class="vsm-help-part-blurb">This site: how to use it, what it stores and where.</p>
+</div>
 
 <section id="workflow" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Workflow</h2>
@@ -39,6 +47,77 @@
     <li><strong>Deploy</strong> with <code>sysmon64 -c sysmonconfig.xml</code> – see <a href="#/help/deploy">Deploying</a>.</li>
   </ol>
 </section>
+
+<section id="concepts" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">Configuration, overlay, download</h2>
+  <dl class="vsm-dl">
+    <dt>Upstream</dt><dd>The pinned snapshot of sysmon-modular this site was built from (commit shown in the footer). Read-only. The site is rebuilt when upstream is updated; your data is untouched because it references modules by path.</dd>
+    <dt>Configuration</dt><dd>Your selection of module paths plus the Sysmon target. There is exactly one; it starts as the standard configuration.</dd>
+    <dt>Overlay</dt><dd>Copy-on-write layer on top of upstream. When you save an upstream module, a copy with the same relative path is written to the overlay and shadows the original in every build. Modules that only exist in the overlay are your <span class="kc-tag kc-tag-navy">custom</span> modules; shadowed ones are marked <span class="kc-tag kc-tag-green">edited</span>. <em>Reset to upstream</em> deletes the overlay copy. When upstream later changes a module you have edited, your copy still wins – review it with <em>Reset</em> if you want the new upstream version.</dd>
+    <dt>Download</dt><dd>One run of the merge engine over the modules that are switched on. The result is validated and analysed before the file is offered; nothing is stored – download again whenever you change something.</dd>
+    <dt>Include list</dt><dd>Upstream's own plain-text selection format (one module path or directory per line). You can export your selection as such a list (menu ☰) or import one; this is the bridge to people who use the CLI directly.</dd>
+  </dl>
+</section>
+
+<section id="search" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">Search syntax</h2>
+  <p>The start page searches the selected modules (or all – the toggle next to the box) as you type; event type and include/exclude are part of the query (<code>event:</code>, <code>onmatch:</code>) rather than separate controls. Plain words are AND-ed and matched case-insensitively against module path, RuleGroup name, event, rule name, fields, operators and values. Each hit is the matching <code>&lt;Rule&gt;</code> or bare condition; a module whose only match is its name is shown once in full.</p>
+  <div class="table-responsive"><table class="table table-sm kc-table">
+    <thead><tr><th>Syntax</th><th>Meaning</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><code>word</code></td><td>substring anywhere in the block or its context</td><td><code>lsass</code></td></tr>
+      <tr><td><code>"a phrase"</code></td><td>substring with spaces</td><td><code>"Clear Windows Event Logs"</code></td></tr>
+      <tr><td><code>-word</code></td><td>must not appear</td><td><code>event:22 -google</code></td></tr>
+      <tr><td><code>/regex/</code></td><td>JavaScript regular expression (case-insensitive); <code>-/regex/</code> negates</td><td><code>/powershell|pwsh/</code></td></tr>
+      <tr><td><code>event:</code></td><td>event type by ID (exact), name part or Sysmon element name</td><td><code>event:10</code>, <code>event:dns</code>, <code>event:ProcessAccess</code></td></tr>
+      <tr><td><code>onmatch:</code></td><td>include (detection) or exclude (noise) blocks – Sysmon's <code>onmatch</code> attribute</td><td><code>onmatch:exclude adobe</code></td></tr>
+      <tr><td><code>field:</code> · <code>condition:</code> · <code>value:</code></td><td>the block has a condition on this field / with this Sysmon condition operator / whose value contains</td><td><code>field:CommandLine condition:"contains any" value:-enc</code></td></tr>
+      <tr><td><code>technique:</code></td><td>ATT&amp;CK id prefix (<code>technique_id=</code>) on the rule or its group</td><td><code>technique:T1059</code>, <code>technique:T1003.001</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Below the counters, <em>Switch on all hits</em> / <em>Switch off</em> apply the search to your configuration in one go – e.g. <code>onmatch:exclude event:22</code> to switch every DNS exclusion on, or <code>value:sophos</code> to find and remove all Sophos-related modules.</p>
+</section>
+
+<section id="shortcuts" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">Keyboard shortcuts</h2>
+  <p>Active when no input field has focus.</p>
+  <div class="table-responsive"><table class="table table-sm kc-table">
+    <tbody>
+      <tr><td><kbd>/</kbd></td><td>Search (focuses the search box)</td></tr>
+      <tr><td><kbd>d</kbd></td><td>Download sysmonconfig.xml</td></tr>
+      <tr><td><kbd>c</kbd></td><td>ATT&amp;CK coverage</td></tr>
+      <tr><td><kbd>h</kbd> / <kbd>?</kbd></td><td>Help / this list</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Leave an input field (then the shortcuts work again)</td></tr>
+      <tr><td><kbd>Tab</kbd> in the raw XML editor</td><td>Inserts two spaces</td></tr>
+      <tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> in a rule name</td><td>Pick an ATT&amp;CK technique from the suggestions</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="tips" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">Practical tips</h2>
+  <ul>
+    <li><strong>Start from the standard, then subtract.</strong> You begin with upstream's published <code>sysmonconfig.xml</code>. Switch off what does not apply (products you do not run) and add exclusions for your own noise.</li>
+    <li><strong>Write exclusions as narrowly as possible</strong>: full path (<code>begin with C:\Program Files\Vendor\</code>) plus, where possible, a second field such as <code>ParentImage</code> or <code>DestinationPort</code>. Exclude wins, so a broad exclusion is the easiest way to lose detections.</li>
+    <li><strong>Noisy event types</strong>: ImageLoad (7), ProcessAccess (10), RegistryEvent (12–14) and FileCreate (11) can produce very high volumes. Keep their include modules focused and test on a few hosts first.</li>
+    <li><strong>Keep the ATT&amp;CK metadata</strong> in rule names when you add detections; the coverage report and Navigator layer are generated from it.</li>
+    <li><strong>Different fleets, different files</strong> (servers vs. workstations, Sysmon 13 hosts vs. Sysmon 15 hosts): export your changes as JSON per fleet and import the one you are working on.</li>
+    <li><strong>Compare before deploying</strong>: the <em>Diff</em> tab on a build shows which rules and techniques changed compared with the previous build, ignoring pure formatting.</li>
+  </ul>
+</section>
+
+<section id="data" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">Where the data lives</h2>
+  <p>Everything stays in your browser: your selection and edited/custom modules in <code>localStorage</code>. Nothing is uploaded – the site is static files and a WebAssembly engine. That also means <strong>clearing site data, private windows or another device start from scratch</strong>.</p>
+  <p>Use the menu (☰) to <strong>export</strong> one JSON file with your selection and edited modules, and <strong>import</strong> it again anywhere – that file is the thing to keep in your own repository.</p>
+  <p>The export references upstream modules by path, so it stays valid across upstream updates; modules that disappear upstream are dropped on import, and modules you edited keep your version until you reset them.</p>
+</section>
+
+<div id="part-modular" class="vsm-help-part">
+  <div class="kc-section-tag">Part</div>
+  <h2 class="vsm-help-part-title">sysmon-modular</h2>
+  <p class="vsm-help-part-blurb">The module library by Olaf Hartong that the configuration is built from.</p>
+</div>
 
 <section id="standard" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">The standard configuration</h2>
@@ -57,16 +136,18 @@
   </table></div>
 </section>
 
-<section id="concepts" class="kc-surface rounded-3 p-4 mb-4">
-  <h2 class="kc-section-title">Configuration, overlay, download</h2>
-  <dl class="vsm-dl">
-    <dt>Upstream</dt><dd>The pinned snapshot of sysmon-modular this site was built from (commit shown in the footer). Read-only. The site is rebuilt when upstream is updated; your data is untouched because it references modules by path.</dd>
-    <dt>Configuration</dt><dd>Your selection of module paths plus the Sysmon target. There is exactly one; it starts as the standard configuration.</dd>
-    <dt>Overlay</dt><dd>Copy-on-write layer on top of upstream. When you save an upstream module, a copy with the same relative path is written to the overlay and shadows the original in every build. Modules that only exist in the overlay are your <span class="kc-tag kc-tag-navy">custom</span> modules; shadowed ones are marked <span class="kc-tag kc-tag-green">edited</span>. <em>Reset to upstream</em> deletes the overlay copy. When upstream later changes a module you have edited, your copy still wins – review it with <em>Reset</em> if you want the new upstream version.</dd>
-    <dt>Download</dt><dd>One run of the merge engine over the modules that are switched on. The result is validated and analysed before the file is offered; nothing is stored – download again whenever you change something.</dd>
-    <dt>Include list</dt><dd>Upstream's own plain-text selection format (one module path or directory per line). You can export your selection as such a list (menu ☰) or import one; this is the bridge to people who use the CLI directly.</dd>
-  </dl>
+<section id="modular" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">How sysmon-modular merges</h2>
+  <p>Every module is a complete mini-configuration with one or more <code>RuleGroup</code>s. <code>sysmon-modular merge</code> takes the template (<code>templates/sysmon_template.xml</code>: root options such as hashing and DNS lookup), drops all selected modules' RuleGroups into <code>EventFiltering</code> unchanged, sets <code>schemaversion</code> for the target Sysmon version and validates the result. It does not rewrite or deduplicate rules – what you see in a module is what ends up in the file.</p>
+  <p>The order of modules is not significant for the outcome, because Sysmon evaluates all groups and applies the exclude-wins rule globally per event type.</p>
+  <p>The download runs the merge with <code>--analyze</code>, which adds <em>conflict</em> findings (an include and an exclude that cancel each other), <em>performance</em> findings (patterns that are expensive to evaluate on every event) and <em>recommendations</em> (e.g. an exclusion by bare image name where a full path would be safer). Recommendations never fail a build; errors do.</p>
 </section>
+
+<div id="part-sysmon" class="vsm-help-part">
+  <div class="kc-section-tag">Part</div>
+  <h2 class="vsm-help-part-title">Sysmon</h2>
+  <p class="vsm-help-part-blurb">Microsoft's System Monitor: how its configuration and filtering work.</p>
+</div>
 
 <section id="sysmon" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Sysmon configuration basics</h2>
@@ -130,13 +211,6 @@
   </table></div>
 </section>
 
-<section id="modular" class="kc-surface rounded-3 p-4 mb-4">
-  <h2 class="kc-section-title">How sysmon-modular merges</h2>
-  <p>Every module is a complete mini-configuration with one or more <code>RuleGroup</code>s. <code>sysmon-modular merge</code> takes the template (<code>templates/sysmon_template.xml</code>: root options such as hashing and DNS lookup), drops all selected modules' RuleGroups into <code>EventFiltering</code> unchanged, sets <code>schemaversion</code> for the target Sysmon version and validates the result. It does not rewrite or deduplicate rules – what you see in a module is what ends up in the file.</p>
-  <p>The order of modules is not significant for the outcome, because Sysmon evaluates all groups and applies the exclude-wins rule globally per event type.</p>
-  <p>The download runs the merge with <code>--analyze</code>, which adds <em>conflict</em> findings (an include and an exclude that cancel each other), <em>performance</em> findings (patterns that are expensive to evaluate on every event) and <em>recommendations</em> (e.g. an exclusion by bare image name where a full path would be safer). Recommendations never fail a build; errors do.</p>
-</section>
-
 <section id="versions" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Sysmon versions &amp; schema</h2>
   <p>The <em>Sysmon target</em> in the menu (☰) decides the <code>schemaversion</code> written to the output and which events and fields are allowed. Newer events (e.g. <code>FileExecutableDetected</code>, Sysmon 15) and fields (e.g. <code>User</code> on file events, Sysmon 14) are removed for an older target (reported as <code>SYS204</code>/<code>SYS205</code> warnings in the download summary) so the file loads on that binary.</p>
@@ -170,41 +244,6 @@
   </table></div>
 </section>
 
-<section id="search" class="kc-surface rounded-3 p-4 mb-4">
-  <h2 class="kc-section-title">Search syntax</h2>
-  <p>The start page searches the selected modules (or all – the toggle next to the box) as you type; event type and include/exclude are part of the query (<code>event:</code>, <code>onmatch:</code>) rather than separate controls. Plain words are AND-ed and matched case-insensitively against module path, RuleGroup name, event, rule name, fields, operators and values. Each hit is the matching <code>&lt;Rule&gt;</code> or bare condition; a module whose only match is its name is shown once in full.</p>
-  <div class="table-responsive"><table class="table table-sm kc-table">
-    <thead><tr><th>Syntax</th><th>Meaning</th><th>Example</th></tr></thead>
-    <tbody>
-      <tr><td><code>word</code></td><td>substring anywhere in the block or its context</td><td><code>lsass</code></td></tr>
-      <tr><td><code>"a phrase"</code></td><td>substring with spaces</td><td><code>"Clear Windows Event Logs"</code></td></tr>
-      <tr><td><code>-word</code></td><td>must not appear</td><td><code>event:22 -google</code></td></tr>
-      <tr><td><code>/regex/</code></td><td>JavaScript regular expression (case-insensitive); <code>-/regex/</code> negates</td><td><code>/powershell|pwsh/</code></td></tr>
-      <tr><td><code>event:</code></td><td>event type by ID (exact), name part or Sysmon element name</td><td><code>event:10</code>, <code>event:dns</code>, <code>event:ProcessAccess</code></td></tr>
-      <tr><td><code>onmatch:</code></td><td>include (detection) or exclude (noise) blocks – Sysmon's <code>onmatch</code> attribute</td><td><code>onmatch:exclude adobe</code></td></tr>
-      <tr><td><code>field:</code> · <code>condition:</code> · <code>value:</code></td><td>the block has a condition on this field / with this Sysmon condition operator / whose value contains</td><td><code>field:CommandLine condition:"contains any" value:-enc</code></td></tr>
-      <tr><td><code>technique:</code></td><td>ATT&amp;CK id prefix (<code>technique_id=</code>) on the rule or its group</td><td><code>technique:T1059</code>, <code>technique:T1003.001</code></td></tr>
-    </tbody>
-  </table></div>
-  <p>Below the counters, <em>Switch on all hits</em> / <em>Switch off</em> apply the search to your configuration in one go – e.g. <code>onmatch:exclude event:22</code> to switch every DNS exclusion on, or <code>value:sophos</code> to find and remove all Sophos-related modules.</p>
-</section>
-
-<section id="shortcuts" class="kc-surface rounded-3 p-4 mb-4">
-  <h2 class="kc-section-title">Keyboard shortcuts</h2>
-  <p>Active when no input field has focus.</p>
-  <div class="table-responsive"><table class="table table-sm kc-table">
-    <tbody>
-      <tr><td><kbd>/</kbd></td><td>Search (focuses the search box)</td></tr>
-      <tr><td><kbd>d</kbd></td><td>Download sysmonconfig.xml</td></tr>
-      <tr><td><kbd>c</kbd></td><td>ATT&amp;CK coverage</td></tr>
-      <tr><td><kbd>h</kbd> / <kbd>?</kbd></td><td>Help / this list</td></tr>
-      <tr><td><kbd>Esc</kbd></td><td>Leave an input field (then the shortcuts work again)</td></tr>
-      <tr><td><kbd>Tab</kbd> in the raw XML editor</td><td>Inserts two spaces</td></tr>
-      <tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> in a rule name</td><td>Pick an ATT&amp;CK technique from the suggestions</td></tr>
-    </tbody>
-  </table></div>
-</section>
-
 <section id="deploy" class="kc-surface rounded-3 p-4 mb-4">
   <h2 class="kc-section-title">Deploying</h2>
   <ol class="vsm-deploy">
@@ -217,25 +256,6 @@
   </ol>
   <p>The hosts must run the Sysmon major version chosen in the menu or newer – an older binary rejects the file with a schema error. Distribute <code>sysmon64.exe</code> and the XML with your management tool (GPO startup script or scheduled task, Intune Win32 app / remediation, SCCM package), run the update command as SYSTEM; Sysmon re-reads the configuration without a reboot.</p>
 
-</section>
-
-<section id="tips" class="kc-surface rounded-3 p-4 mb-4">
-  <h2 class="kc-section-title">Practical tips</h2>
-  <ul>
-    <li><strong>Start from the standard, then subtract.</strong> You begin with upstream's published <code>sysmonconfig.xml</code>. Switch off what does not apply (products you do not run) and add exclusions for your own noise.</li>
-    <li><strong>Write exclusions as narrowly as possible</strong>: full path (<code>begin with C:\Program Files\Vendor\</code>) plus, where possible, a second field such as <code>ParentImage</code> or <code>DestinationPort</code>. Exclude wins, so a broad exclusion is the easiest way to lose detections.</li>
-    <li><strong>Noisy event types</strong>: ImageLoad (7), ProcessAccess (10), RegistryEvent (12–14) and FileCreate (11) can produce very high volumes. Keep their include modules focused and test on a few hosts first.</li>
-    <li><strong>Keep the ATT&amp;CK metadata</strong> in rule names when you add detections; the coverage report and Navigator layer are generated from it.</li>
-    <li><strong>Different fleets, different files</strong> (servers vs. workstations, Sysmon 13 hosts vs. Sysmon 15 hosts): export your changes as JSON per fleet and import the one you are working on.</li>
-    <li><strong>Compare before deploying</strong>: the <em>Diff</em> tab on a build shows which rules and techniques changed compared with the previous build, ignoring pure formatting.</li>
-  </ul>
-</section>
-
-<section id="data" class="kc-surface rounded-3 p-4 mb-4">
-  <h2 class="kc-section-title">Where the data lives</h2>
-  <p>Everything stays in your browser: your selection and edited/custom modules in <code>localStorage</code>. Nothing is uploaded – the site is static files and a WebAssembly engine. That also means <strong>clearing site data, private windows or another device start from scratch</strong>.</p>
-  <p>Use the menu (☰) to <strong>export</strong> one JSON file with your selection and edited modules, and <strong>import</strong> it again anywhere – that file is the thing to keep in your own repository.</p>
-  <p>The export references upstream modules by path, so it stays valid across upstream updates; modules that disappear upstream are dropped on import, and modules you edited keep your version until you reset them.</p>
 </section>
 
 </div>
