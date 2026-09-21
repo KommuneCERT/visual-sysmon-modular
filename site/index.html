@@ -22,8 +22,8 @@
   <!-- top strip on every page except the landing/search page -->
   <div class="vsm-top">
     <a class="vsm-top-logo" href="#/" title="Home"><svg width="20" height="23" viewBox="0 0 44 50" fill="none" aria-hidden="true"><path d="M22 6L7 13v11c0 9.18 6.38 17.77 15 20 8.62-2.23 15-10.82 15-20V13L22 6z" fill="rgba(30,95,168,0.6)" stroke="rgba(255,255,255,0.35)" stroke-width="1"/><path d="M14 25l5 5 11-11" stroke="#0a9dd9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span x-text="$store.app.title"></span></a>
-    <a class="vsm-top-back" :href="$store.app.searchHref" x-show="$store.app.route.page !== 'search'">← Search</a>
     <span class="vsm-top-title" x-text="$store.app.pageTitle"></span>
+    <a class="vsm-top-help" href="#/help" :class="{ active: $store.app.route.page === 'help' }" title="Help (h)">Help</a>
   </div>
 
   <main class="vsm-main">
@@ -302,7 +302,6 @@
   <footer class="vsm-footer">
     <button class="btn btn-sm btn-primary fw-bold" @click="$store.app.download()" :disabled="!!$store.app.busy" title="Merge your configuration and download sysmonconfig.xml (d)">⬇ Download sysmonconfig.xml</button>
     <a href="#/coverage" class="vsm-footer-link" :class="{ active: $store.app.route.page === 'coverage' }">Coverage</a>
-    <a href="#/help" class="vsm-footer-link" :class="{ active: $store.app.route.page === 'help' }">Help</a>
     <div class="dropup">
       <a href="#" class="vsm-footer-link dropdown-toggle" data-bs-toggle="dropdown">Save / Load</a>
       <ul class="dropdown-menu">

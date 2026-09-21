@@ -22,7 +22,7 @@ const store = fn => page.evaluate(fn);
 // ── landing ──
 await page.goto(base + "/#/", { waitUntil: "networkidle" });
 await page.waitForSelector("#q", { timeout: 15000 });
-step("landing shows only the search box", (await page.locator(".vsm-search--hero").count()) === 1 && (await page.locator(".vsm-hit").count()) === 0 && (await page.locator(".vsm-top").isVisible()) && (await page.locator(".vsm-top-back").isVisible()) === false);
+step("landing shows only the search box", (await page.locator(".vsm-search--hero").count()) === 1 && (await page.locator(".vsm-hit").count()) === 0 && (await page.locator(".vsm-top").isVisible()) && (await page.locator(".vsm-top-title").innerText()) === "SEARCH" && (await page.locator(".vsm-top-help").isVisible()));
 step("standard configuration = Balanced", (await store(() => Alpine.store("app").profile.modules.length)) === 433);
 step("footer bar", (await page.locator(".vsm-footer").innerText()).includes("Download sysmonconfig.xml") && (await page.locator(".vsm-footer-status").innerText()) === "Standard configuration · 433 modules");
 await shot("landing");
@@ -60,7 +60,7 @@ step("shortcut / → back to search with query", (await store(() => location.has
 // ── editor ──
 await page.goto(base + "/#/m/1_process_creation/include_clear_windows_event_logs.xml/edit"); await page.waitForTimeout(500);
 step("editor renders fields", (await page.locator(".vsm-cond select").first().inputValue()) === "OriginalFileName");
-step("editor has in-config switch + back to search", (await page.locator(".vsm-top-back").innerText()) === "← Search" && (await page.locator("label:has-text('in config') input").isChecked()));
+step("editor has in-config switch + title", (await page.locator(".vsm-top-title").innerText()) === "RULE EDITOR" && (await page.locator("label:has-text('in config') input").isChecked()));
 await page.fill(".vsm-cond input.font-monospace >> nth=0", "changed.exe"); await page.waitForTimeout(100);
 step("explain updates live", (await page.locator(".vsm-rule .vsm-sentence").first().innerText()).includes("changed.exe"));
 const nameInput = page.locator(".vsm-rule .vsm-pick input").first();
@@ -104,7 +104,7 @@ await page.selectOption(".vsm-footer-target select", "15.20");
 // ── coverage + help ──
 await page.click(".vsm-footer a:has-text('Coverage')"); await page.waitForSelector(".vsm-tactic", { timeout: 60000 });
 step("coverage from footer", (await page.locator(".vsm-tactic").count()) >= 10);
-await page.click(".vsm-footer a:has-text('Help')"); await page.waitForSelector("#help-root section");
+await page.click(".vsm-top-help"); await page.waitForSelector("#help-root section");
 step("help event table", (await page.locator("#event-table tbody tr").count()) >= 20 && (await page.locator("#cost-table tbody tr").count()) >= 20);
 await page.click("#event-table a:has-text('search') >> nth=0"); await page.waitForTimeout(600);
 step("event table → search cat:", (await store(() => location.hash)).includes("q=cat%3A1") || (await store(() => location.hash)).includes("q=cat:1"));
