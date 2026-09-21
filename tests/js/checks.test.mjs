@@ -1,15 +1,30 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { checklist, volumeOf } from "../../site/js/checks.js";
+import { checklist, volumeOf, costOf, costTags } from "../../site/js/checks.js";
 import { newCatalog } from "./helpers.mjs";
 
 const catalog = newCatalog();
 const all = catalog.allRels();
 const titles = list => list.map(i => i.title);
 
-test("volume map", () => {
+test("cost map", () => {
   assert.equal(volumeOf("7_image_load").level, "high");
-  assert.equal(volumeOf("5_process_ended").level, "low");
+  assert.equal(volumeOf("8_create_remote_thread").level, "low");
+  assert.deepEqual(costTags("7_image_load").map(t => t.key), ["cpu", "volume"]);
+  assert.deepEqual(costTags("9_raw_access_read", { max: 1 }).map(t => t.key), ["cpu"]);
+  assert.deepEqual(costTags("23_file_delete").map(t => t.key), ["disk", "volume"]);
+  assert.deepEqual(costTags("24_clipboard_change").map(t => t.key), ["privacy"]);
+  assert.deepEqual(costTags("5_process_ended"), []);
+  assert.ok(costOf("9_raw_access_read").why.includes("OFF"));
+});
+
+test("RawAccessRead include with conditions is flagged", () => {
+  const rel = "9_raw_access_read/include_dc_full.xml";
+  const c = newCatalog({ [rel]: '<Sysmon schemaversion="4.90"><EventFiltering><RuleGroup name="" groupRelation="or"><RawAccessRead onmatch="include"><Device condition="contains">Harddisk</Device></RawAccessRead></RuleGroup></EventFiltering></Sysmon>' });
+  const t = titles(checklist(c, { modules: [rel, ...all.filter(r => !r.startsWith("9_"))], sysmon_version: "15.20", unsupported: "exclude" }, null));
+  assert.ok(t.includes("RawAccessRead (event 9) is active"));
+  const t2 = titles(checklist(catalog, { modules: all, sysmon_version: "15.20", unsupported: "exclude" }, null));
+  assert.ok(!t2.includes("RawAccessRead (event 9) is active"), "upstream's empty filter must not warn");
 });
 
 test("empty and exclude-only selections", () => {

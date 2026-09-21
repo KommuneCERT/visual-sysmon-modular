@@ -7,7 +7,7 @@ import { search } from "./search.js";
 import { buildMatrix, ruleTagging } from "./attack.js";
 import { parseList, formatList } from "./includelist.js";
 import { describeModule, describeRule, describeBare, describeHit } from "./describe.js";
-import { checklist, volumeOf } from "./checks.js";
+import { checklist, volumeOf, costOf, costTags } from "./checks.js";
 
 export const APP_TITLE = "Visual Sysmon Modular";
 const SEVERITY_ORDER = ["error", "warning", "performance", "recommendation", "info"];
@@ -156,7 +156,12 @@ document.addEventListener("alpine:init", () => {
     get overlayRels() { this.tick; return vsm.catalog.overlayRels(); },
     get presets() { return vsm.catalog.presets; },
     get checklist() { this.tick; const p = this.profile; return p ? checklist(vsm.catalog, A.raw(p), this.buildsFor(p.slug)[0] || null) : []; },
-    volumeOf,
+    volumeOf, costOf, costTags,
+    fillCostTable(tbody) {
+      if (!tbody) return;
+      const lvl = v => `<span class="vsm-cost-dim vsm-cost-${v || "low"}">${v || "low"}</span>`;
+      tbody.innerHTML = vsm.catalog.categories().map(c => { const k = costOf(c.dirname); return `<tr><td><a href="#/c/${c.dirname}">${c.event_ids.join("/")} ${esc(c.label)}</a></td><td>${lvl(k.volume)}</td><td>${lvl(k.cpu)}</td><td>${lvl(k.disk)}${k.privacy === "high" ? ' <span class="vsm-cost-dim vsm-cost-high">privacy</span>' : ""}</td><td class="small">${esc(k.why)}</td></tr>`; }).join("");
+    },
     get showWizard() { return !this.state.onboarded && !Object.values(this.state.builds).some(b => b.length) && this.overlayRels.length === 0; },
     dismissWizard() { this.state.onboarded = true; this.persist(); },
 
@@ -380,6 +385,7 @@ document.addEventListener("alpine:init", () => {
   A.data("pageCategory", () => ({
     q: "", kind: "", dupName: {}, expanded: {},
     volume(cat) { return volumeOf(cat); },
+    cost(cat) { return costOf(cat); },
     explain(m) {
       try { return describeModule(vsm.catalog.parsed(m.rel), { max: this.expanded[m.rel] ? 999 : 1 }); }
       catch { return { sentences: [], more: 0, total: 0 }; }

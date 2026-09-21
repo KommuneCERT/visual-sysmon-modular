@@ -63,9 +63,9 @@ step("shortcut / → search focused", (await page.evaluate(() => location.hash))
 
 // ── category: toggles, volume badge, sentences ──
 await page.goto(base + "/#/c/7_image_load"); await page.waitForTimeout(400);
-step("high volume badge + popover", (await page.locator(".kc-tag-red:has-text('high volume')").count()) === 1);
-await page.hover(".vsm-vol-tag >> nth=0"); await page.waitForTimeout(400);
-step("sidebar volume popover", (await page.locator(".popover").innerText()).includes("High-volume"));
+step("cost strip on category", (await page.locator(".vsm-cost .vsm-cost-high").count()) === 2);   // volume + cpu for ImageLoad
+await page.hover(".vsm-catlist .vsm-vol-tag--cpu >> nth=0");   // 7_image_load shows its single highest-priority tag await page.waitForTimeout(400);
+step("sidebar cost popover", (await page.locator(".popover").innerText()).includes("High CPU cost"));
 step("card sentence", (await page.locator(".vsm-card .vsm-sentence").first().innerText()).match(/^(Log|Ignore) ImageLoad when /) !== null);
 const before = await page.evaluate(() => Alpine.store("app").selected.size);
 await page.locator(".vsm-card .vsm-switch").first().uncheck(); await page.waitForTimeout(200);
@@ -129,6 +129,7 @@ await page.goto(base + "/#/help"); await page.waitForSelector("#help-root sectio
 await page.click(".vsm-toc a:has-text('Condition operators')");
 const scrolled = await page.waitForFunction(() => location.hash === "#/help/conditions" && Math.abs(document.getElementById("conditions").getBoundingClientRect().top) < 120, null, { timeout: 5000 }).then(() => true).catch(() => false);
 step("help section link", scrolled, await page.evaluate(() => location.hash + " top=" + Math.round(document.getElementById("conditions").getBoundingClientRect().top)));
+step("help cost table filled", (await page.locator("#cost-table tbody tr").count()) >= 20);
 
 // ── export / import / persistence ──
 const [dl] = await Promise.all([page.waitForEvent("download"), page.evaluate(() => Alpine.store("app").exportAll())]);

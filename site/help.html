@@ -15,6 +15,7 @@
     <a href="#/help/conditions">Condition operators</a>
     <a href="#/help/modular">How sysmon-modular merges</a>
     <a href="#/help/versions">Sysmon versions &amp; schema</a>
+    <a href="#/help/cost">What each event type costs</a>
     <a href="#/help/search">Search syntax</a>
     <a href="#/help/shortcuts">Keyboard shortcuts</a>
     <a href="#/help/deploy">Deploying</a>
@@ -146,6 +147,24 @@
     </tbody>
   </table></div>
   <p>A module's own <code>schemaversion</code> only matters for the module file itself; the merged file always uses the profile's target. The rule editor sets it automatically to the lowest schema that supports the events the module uses, so you never need to touch it (the raw XML editor still lets you). <code>sysmon64 -s</code> prints the schema of an installed binary if you need to check which fields it knows.</p>
+</section>
+
+<section id="cost" class="kc-surface rounded-3 p-4 mb-4">
+  <h2 class="kc-section-title">What each event type costs</h2>
+  <p>Independent of which modules you pick, switching an event type on has an inherent cost on every host. The sidebar tags (<span class="vsm-vol-tag">high</span> volume, <span class="vsm-vol-tag vsm-vol-tag--cpu">cpu</span>, <span class="vsm-vol-tag vsm-vol-tag--disk">disk</span>, <span class="vsm-vol-tag vsm-vol-tag--privacy">privacy</span>) and the strip on each category page summarise it; hover for the reason. The main levers:</p>
+  <ul>
+    <li><strong>Hashing</strong> – the template sets <code>HashAlgorithms</code> to <code>*</code> (MD5 + SHA1 + SHA256 + IMPHASH). Every ProcessCreate, DriverLoad, ImageLoad, FileDelete/FileDeleteDetected, FileCreateStreamHash and FileExecutableDetected event hashes a file. Fine for processes; expensive when ImageLoad is broad.</li>
+    <li><strong>ImageLoad (7)</strong> – every DLL load is hashed <em>and</em> signature-verified. The single most CPU-expensive event type; only viable with tight include rules.</li>
+    <li><strong>ProcessAccess (10)</strong> – a call-stack trace is generated per event, and the events are very frequent. Keep it focused on lsass.exe & co.</li>
+    <li><strong>RawAccessRead (9)</strong> – sector-level reads. Backup, AV and defrag issue thousands per second; upstream ships it <em>off</em> (empty include filter). Enable only where no process should read raw disk, e.g. domain controllers, with exclusions for backup/AV.</li>
+    <li><strong>FileDelete (23)</strong> – deleted files are hashed and copied into the archive directory; disk grows without rotation. <strong>ClipboardChange (24)</strong> also writes clipboard text to the archive – a privacy decision.</li>
+    <li><strong>Volume</strong> – NetworkConnect, DnsQuery, FileCreate and Registry events are cheap each but numerous; the cost lands in the event log and the forwarder (WEC/agent), and in your SIEM licence.</li>
+    <li><strong>Template options</strong> – <code>CheckRevocation</code> (online revocation checks per signature) and <code>DnsLookup</code> (reverse DNS per connection) are off in upstream's template and cannot be changed here; leave them off unless you know why.</li>
+  </ul>
+  <div class="table-responsive"><table class="table table-sm kc-table" id="cost-table">
+    <thead><tr><th>Event</th><th>Volume</th><th>CPU</th><th>Disk</th><th>Note</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
 </section>
 
 <section id="search" class="kc-surface rounded-3 p-4 mb-4">

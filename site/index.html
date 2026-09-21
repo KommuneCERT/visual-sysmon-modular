@@ -69,8 +69,7 @@
     <div class="list-group list-group-flush vsm-catlist">
       <template x-for="row in $store.app.sidebar" :key="row.cat.dirname">
         <a :href="'#/c/' + row.cat.dirname" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" :class="{ active: row.cat.dirname === $store.app.route.cat }">
-          <span class="d-flex align-items-center gap-2 text-truncate"><span class="vsm-evid" x-text="row.cat.event_ids.join('/')"></span><span class="text-truncate" x-text="row.cat.label"></span><template x-if="$store.app.volumeOf(row.cat.dirname).level === 'high'"><span class="vsm-vol-tag" x-pop="'<strong>High-volume event type.</strong> ' + $store.app.volumeOf(row.cat.dirname).why + ' Keep the include modules focused and the exclusions on.'" @click.stop.prevent>high</span></template>
-          <template x-if="$store.app.volumeOf(row.cat.dirname).disk"><span class="vsm-vol-tag vsm-vol-tag--disk" x-pop="'<strong>Archives deleted files to disk.</strong> ' + $store.app.volumeOf(row.cat.dirname).why" @click.stop.prevent>disk</span></template></span>
+          <span class="d-flex align-items-center gap-2 text-truncate"><span class="vsm-evid" x-text="row.cat.event_ids.join('/')"></span><span class="text-truncate" x-text="row.cat.label"></span><template x-for="t in $store.app.costTags(row.cat.dirname, { max: 1 })" :key="t.key"><span :class="t.cls" x-pop="'<strong>' + ({volume:'High event volume',cpu:'High CPU cost per event',disk:'Uses disk on the host',privacy:'Captures sensitive data'})[t.key] + '.</strong> ' + $store.app.costOf(row.cat.dirname).why" @click.stop.prevent x-text="t.label"></span></template></span>
           <span class="badge rounded-pill" :class="row.selected === 0 ? 'vsm-badge-none' : row.selected === row.total ? 'vsm-badge-all' : 'vsm-badge-some'" x-text="row.selected + '/' + row.total"></span>
         </a>
       </template>
@@ -232,7 +231,7 @@
               <div>
                 <span class="kc-section-tag">Event ID <span x-text="cat.event_ids.join(' / ')"></span> <button x-help="'Every module here filters this Sysmon event. <span class=\'kc-severity kc-severity-info\'>include</span> modules are detections – only matching events are logged. <span class=\'kc-severity kc-severity-medium\'>exclude</span> modules suppress known noise. <strong>Exclude always wins</strong> when both match, so keep exclusions narrow.'"></button></span>
                 <h1 class="kc-section-title mb-0" x-text="cat.label"></h1>
-                <div class="text-muted small"><code x-text="cat.dirname + '/'"></code> · <span class="kc-tag" :class="{ 'kc-tag-red': volume(cat.dirname).level === 'high', 'kc-tag-amber': volume(cat.dirname).level === 'medium' }" x-text="volume(cat.dirname).level + ' volume'" x-pop="'<strong>Expected event volume: ' + volume(cat.dirname).level + '.</strong> ' + volume(cat.dirname).why"></span> · <span x-text="cat.modules.filter(m => m.kind === 'include').length"></span> include · <span x-text="cat.modules.filter(m => m.kind === 'exclude').length"></span> exclude</div>
+                <div class="text-muted small"><code x-text="cat.dirname + '/'"></code> · <span class="vsm-cost" x-pop="'<strong>Cost of enabling this event type – regardless of which modules you pick.</strong> ' + cost(cat.dirname).why"><template x-for="d in ['volume','cpu','disk','privacy']" :key="d"><span class="vsm-cost-dim" x-show="cost(cat.dirname)[d]" :class="'vsm-cost-' + (cost(cat.dirname)[d] || 'low')"><span x-text="d"></span> <b x-text="cost(cat.dirname)[d]"></b></span></template></span> · <span x-text="cat.modules.filter(m => m.kind === 'include').length"></span> include · <span x-text="cat.modules.filter(m => m.kind === 'exclude').length"></span> exclude</div>
               </div>
               <div class="d-flex gap-2 flex-wrap">
                 <div class="dropdown">
@@ -248,7 +247,7 @@
                 <a class="btn btn-sm btn-primary" :href="'#/new/' + cat.dirname" title="Create a custom module in this category (stored in the overlay, not upstream)">+ New module</a>
               </div>
             </div>
-            <div class="kc-callout kc-callout--warning mb-3" x-show="volume(cat.dirname).disk"><span class="kc-callout-icon">💽</span><div><div class="kc-callout-title">This event archives deleted files – it costs disk space on every host</div><p class="kc-callout-body mb-0" x-text="volume(cat.dirname).why"></p><p class="kc-callout-body mb-0 mt-1">The archive directory is set by <code>ArchiveDirectory</code> in the template (default <code>Sysmon</code> → <code>C:\Sysmon</code>). Selecting only <em>exclude</em> modules here has no effect unless an include module is on.</p></div></div>
+            <div class="kc-callout kc-callout--warning mb-3" x-show="$store.app.costTags(cat.dirname).length"><span class="kc-callout-icon" x-text="cost(cat.dirname).privacy === 'high' ? '🔒' : cost(cat.dirname).disk === 'high' ? '💽' : cost(cat.dirname).cpu === 'high' ? '🔥' : '📈'"></span><div><div class="kc-callout-title">What enabling this event type costs on every host</div><p class="kc-callout-body mb-0" x-text="cost(cat.dirname).why"></p><p class="kc-callout-body mb-0 mt-1" x-show="cost(cat.dirname).disk !== 'low'">The archive directory is set by <code>ArchiveDirectory</code> in the template (default <code>Sysmon</code> → <code>C:\Sysmon</code>).</p><p class="kc-callout-body mb-0 mt-1">Selecting only <em>exclude</em> modules has no effect unless an include module is on; an empty include filter keeps the event off.</p></div></div>
             <div class="d-flex gap-2 mb-3 vsm-filter">
               <input class="form-control form-control-sm" x-model="q" placeholder="Search file name, title or technique (e.g. T1059)…">
               <select class="form-select form-select-sm w-auto" x-model="kind"><option value="">include + exclude</option><option value="include">include only</option><option value="exclude">exclude only</option></select>
@@ -604,7 +603,7 @@
     <!-- ═══════════ HELP ═══════════ -->
     <template x-if="$store.app.route.page === 'help'">
       <div id="help-root" x-data="{ loaded: false }"
-           x-init="fetch('help.html').then(r => r.text()).then(h => { $el.innerHTML = h; window.vsmXml.init($el); loaded = true; $nextTick(() => $store.app.scrollToSection()) })"
+           x-init="fetch('help.html').then(r => r.text()).then(h => { $el.innerHTML = h; window.vsmXml.init($el); $store.app.fillCostTable($el.querySelector('#cost-table tbody')); loaded = true; $nextTick(() => $store.app.scrollToSection()) })"
            x-effect="$store.app.route.id; loaded && $nextTick(() => $store.app.scrollToSection())"></div>
     </template>
   </main>

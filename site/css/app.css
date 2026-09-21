@@ -188,6 +188,14 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 .vsm-vol-tag { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #fff; background: var(--kc-red); border-radius: 3px; padding: 1px 5px; flex-shrink: 0; cursor: help; }
 .vsm-catlist .active .vsm-vol-tag { background: #fff; color: var(--kc-red); }
 .vsm-vol-tag--disk { background: var(--kc-amber); }
+.vsm-vol-tag--cpu { background: #c2410c; }
+.vsm-vol-tag--privacy { background: var(--kc-navy-2); }
+.vsm-catlist .active .vsm-vol-tag--cpu, .vsm-catlist .active .vsm-vol-tag--privacy { background: #fff; color: var(--kc-navy); }
+.vsm-cost { display: inline-flex; gap: 4px; vertical-align: middle; cursor: help; }
+.vsm-cost-dim { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--kc-gray-100); color: var(--kc-gray-600); text-transform: capitalize; }
+.vsm-cost-dim b { text-transform: none; }
+.vsm-cost-medium { background: var(--kc-tone-warning-bg); color: #7a4b00; }
+.vsm-cost-high { background: var(--kc-tone-danger-bg); color: var(--kc-red); }
 .vsm-catlist .active .vsm-vol-tag--disk { background: #fff; color: var(--kc-amber); }
 .vsm-checklist .kc-callout--compact { margin-bottom: 6px; }
 .vsm-checklist .kc-callout-body { margin: 2px 0 0; }
